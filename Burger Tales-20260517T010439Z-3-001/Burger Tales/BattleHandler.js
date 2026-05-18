@@ -9,6 +9,7 @@ import  {enemyDirectory} from "./enemyDirectory.js";
 import {world } from "./WorldHandler.js";
 import {newImage, newRect, newText} from "./Utility.js";
 import {keys, keybinds} from "./KeyboardInputHandler.js";
+import {playerInventory} from "./PlayerController.js";
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -131,6 +132,7 @@ class entity{
 export const battleStates = {//ENUM EQUIVALENT
     INACTIVE: "INACTIVE",
 
+    CREATE_TURN_ORDER: "CREATE_TURN_ORDER",
     PLAYER_SELECTION: "PLAYER_SELECTION",//this is where players select each ally to do something
     // the turn order is hidden in this state, the player has to assume that their allies go in said order
 
@@ -206,29 +208,65 @@ export let battlefield = {
 *
 * */
 
+const mainUIIndexes = ["Attack","Other","Item","Defend"];
+
 let battleUI = {//this purely handles ui which is drawn over everything,
 
     renderQueue : [],
+    battleBoxText : "",
     state : {
         action : "none",
-        menu : "main",
+        menuStack : [{name:"main",maxIndex:4,curIndex:0}],
         parentMenu : "", //for backing out of a menu
         allyIndex : 0,
-        menuIndex : 0,
         currentSelection : null,
-        inputDebounce : false, //prevent multi triggers of input
+        inputDebounce : true, //prevent multi triggers of input
+        debounceAccumulation:0,
+        debounceTimer:0.15,
     },
 
     update(deltaTime) {
-        if (keys[keybinds.Interact]) {
-            //enter a sub menu
-        } else if (keys[keybinds.MenuNavigationLeft]) {
-            //decrement index in whatever menu
-        } else if (keys[keybinds.MenuNavigationRight]) {
-            //increment index in whatever menu
-        } else if (keys[keybinds.MenuBack]) {
-            //return to parent block, but if null, do nothing
+        let curMenu = this.state.menuStack[this.state.menuStack.length - 1];
+        if (this.state.inputDebounce) {
+            this.state.debounceAccumulation+=deltaTime;
+            if (this.state.debounceAccumulation >= this.state.debounceTimer) {
+                this.state.inputDebounce = false;
+                this.state.debounceAccumulation = 0;
+            }
         }
+        if (!this.state.inputDebounce) {
+            if (keys[keybinds.Interact]) {
+                //TOP HIERARCHY; MAIN MENU
+                this.state.inputDebounce = true;
+                if (this.state.menuStack[this.state.menuStack.length-1].name === "main") {
+                    if (mainUIIndexes[curMenu.curIndex] === "Attack") {
+                        //find all of that ally's moves
+                        this.state.menuStack.push({name: "offensive",maxIndex: battlefield.allies[this.state.allyIndex].offensive.length,curIndex:0});
+                    } else if (mainUIIndexes[curMenu.curIndex] === "Other") {
+                        this.state.menuStack.push({name: "other",maxIndex: battlefield.allies[this.state.allyIndex].other.length,curIndex:0});
+                    } else if (mainUIIndexes[curMenu.curIndex] === "Defend") {
+                        //increase defense by 1 for that turn and grant some energy back
+                        //make the logic block give back energy
+                    } else if (mainUIIndexes[curMenu.curIndex] === "Item") {
+                        //look through the player's inventory (playerController)
+                        this.state.menuStack.push({name:"item",maxIndex:playerInventory.length,curIndex:0});
+                    }
+                }
+            } else if (keys[keybinds.MenuNavigationLeft]) {
+                this.state.inputDebounce = true;
+                if (this.state.menuStack[this.state.menuStack.length - 1].curIndex - 1 >= 0) {this.state.menuStack[this.state.menuStack.length - 1].curIndex--;}
+            } else if (keys[keybinds.MenuNavigationRight]) {
+                this.state.inputDebounce = true;
+                if (this.state.menuStack[this.state.menuStack.length - 1].curIndex  < this.state.menuStack[this.state.menuStack.length - 1].maxIndex) {this.state.menuStack[this.state.menuStack.length - 1].curIndex++;}
+            } else if (keys[keybinds.MenuBack]) {
+                this.state.inputDebounce = true;
+                //return to parent block, but if null, do nothing
+                if (this.state.menuStack.length > 1) {
+                    this.state.menuStack.pop();
+                }
+            }
+        }
+
     },
 
     draw(){
@@ -238,12 +276,27 @@ let battleUI = {//this purely handles ui which is drawn over everything,
             let currentAlly = battlefield.allies[this.state.allyIndex];
 
             //TEMPORARY; WILL GET DRAWN OUT WITH PROPER DATA LATER
-            let OffensiveActionBlock = newRect("player_offensive",currentAlly.worldData.x + 25,currentAlly.worldData.y+50,50,50,"rgb(255,255,255)");
-            OffensiveActionBlock.draw();
-            let tct = newText("jfw",currentAlly.worldData.x,currentAlly.worldData.y,"rgb(255,255,255)","16px Arial",currentAlly.name);
-            tct.draw();
+
+
+            if (this.state.menuStack[this.state.menuStack.length-1].name === "main") {
+                let OffensiveActionBlock = newRect("player_offensive",currentAlly.worldData.x + 75,currentAlly.worldData.y+50,50,50,"rgb(255,255,255)");
+                OffensiveActionBlock.draw();
+                let tt = newText("jw",currentAlly.worldData.x + 75,currentAlly.worldData.y + 50 + 16,"rgb(0,0,0)","16px Arial",mainUIIndexes[this.state.menuStack[this.state.menuStack.length-1].curIndex]);
+                tt.draw();
+
+                let tct = newText("jfw",currentAlly.worldData.x,currentAlly.worldData.y,"rgb(255,255,255)","16px Arial",currentAlly.name);
+                tct.draw();
+            } else if (this.state.menuStack[this.state.menuStack.length-1].name === "offensive") {
+                let tt = newText("jw",currentAlly.worldData.x + 75,currentAlly.worldData.y + 50 + 16,"rgb(255,0,0)","16px Arial","ATTACCCCCK");
+                tt.draw();
+            }
         }
 
+        let dialogueBoxBG = newRect("dialogueBoxBG",350,20,500,150,"rgb(255,255,255)");
+        dialogueBoxBG.draw();
+
+        let dialogueBoxText = newText("dialogueBoxText",350,20 + 16,"rgb(0,0,0)","16px Arial",this.battleBoxText);
+        dialogueBoxText.draw();
     },
 }
 
@@ -286,6 +339,8 @@ export let battle = {
         for (let enemyIndex = 0; enemyIndex < enemyData.length;enemyIndex++){
             battlefield.enemies.push(new entity(enemyDirectory[enemyData[enemyIndex]],new vector2D(enemyXBuffer,(heightBuffer * enemyIndex) + heightAddon,characterSize,characterSize,0),"enemies"));
         }
+
+        battleUI. battleBoxText = "You started a fight!";
 
         battlefield.state = battleStates.PLAYER_SELECTION;
         changeGameState("Battle");
