@@ -7,7 +7,8 @@ import { gameState, changeGameState } from "./main.js";
 import  {enemyDirectory} from "./enemyDirectory.js";
 // import { signal } from "./SignalService.js";
 import {world } from "./WorldHandler.js";
-import {newImage, newRect} from "./Utility.js";
+import {newImage, newRect, newText} from "./Utility.js";
+import {keys, keybinds} from "./KeyboardInputHandler.js";
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -97,6 +98,10 @@ class entity{
                 subcategory : "",
                 target : "",
             };
+        }
+
+        if (side === "enemies" && stats?.pattern){
+            this.pattern = stats?.pattern;
         }
         for (let action of stats.offensive) {
             this.offensive[action] = actionDirectory[action]
@@ -207,36 +212,37 @@ let battleUI = {//this purely handles ui which is drawn over everything,
     state : {
         action : "none",
         menu : "main",
+        parentMenu : "", //for backing out of a menu
         allyIndex : 0,
         menuIndex : 0,
         currentSelection : null,
-        playerInput : false,
         inputDebounce : false, //prevent multi triggers of input
     },
 
     update(deltaTime) {
-        if (this.state.playerInput) { //handle player input first
-
-        }
-
-        //ALWAYS DRAW HEALTH AND ENERGY BELOW EACH ENTITY
-        //draw a red/green box that keeps track of how many debuffs/buffs an entity has, the player can click on them to view what they are
-
-
-        if (this.state.action === "player") {
-            //draw a menu around the current character taking action
-            let currentAlly = battlefield.allies[this.state.allyIndex];
-            console.log("playa do something noob")
-            // let OffensiveActionBlock = newRect("player_offensive",);
-            // OffensiveActionBlock.draw();
-
-            //draw little things around the ally and maybe zoom towards them
-            //once the player selects an action, fill their logic block with a function to call said action
-
+        if (keys[keybinds.Interact]) {
+            //enter a sub menu
+        } else if (keys[keybinds.MenuNavigationLeft]) {
+            //decrement index in whatever menu
+        } else if (keys[keybinds.MenuNavigationRight]) {
+            //increment index in whatever menu
+        } else if (keys[keybinds.MenuBack]) {
+            //return to parent block, but if null, do nothing
         }
     },
 
     draw(){
+        //ALWAYS DRAW HEALTH AND ENERGY BELOW EACH ENTITY
+        //draw a red/green box that keeps track of how many debuffs/buffs an entity has, the player can click on them to view what they are
+        if (this.state.action === "player") {
+            let currentAlly = battlefield.allies[this.state.allyIndex];
+
+            //TEMPORARY; WILL GET DRAWN OUT WITH PROPER DATA LATER
+            let OffensiveActionBlock = newRect("player_offensive",currentAlly.worldData.x + 25,currentAlly.worldData.y+50,50,50,"rgb(255,255,255)");
+            OffensiveActionBlock.draw();
+            let tct = newText("jfw",currentAlly.worldData.x,currentAlly.worldData.y,"rgb(255,255,255)","16px Arial",currentAlly.name);
+            tct.draw();
+        }
 
     },
 }
@@ -316,6 +322,7 @@ export let battle = {
                 150,
                 150
             );
+            // battlefield.allies[ally].draw();
         }
 
         for (let enemy in battlefield.enemies) {
