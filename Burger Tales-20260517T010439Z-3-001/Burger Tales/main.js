@@ -3,10 +3,11 @@ import {assetCount, assets, availableAssets, loadAsset} from './AssetLoader.js';
 import { tweenService } from './TweenService.js';
 import { playerController, camera } from "./PlayerController.js";
 import { world } from "./WorldHandler.js";
-import {newText, renderedShapes} from "./Utility.js"
+import {newText, renderedShapes, shakeEffect} from "./Utility.js"
 import { dialogue } from "./dialogueClass.js"
 import { battle, battlefield } from "./BattleHandler.js";
 import  { mouse } from "./MouseInputHandler.js";
+import  {keyPressUpdate} from "./KeyboardInputHandler.js";
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -17,13 +18,18 @@ export let gameState = "World"
 
 export function changeGameState(newState) {gameState = newState;}
 
+export const gameWidth = 1920;
+export const gameHeight = 1080;
 
-
-canvas.width  = 1200;
-canvas.height = 800;
+// canvas.width  = 1200;
+// canvas.height = 800;
+canvas.width  = gameWidth;
+canvas.height = gameHeight;
 
 camera.width  = canvas.width; //override canvas buffer
 camera.height = canvas.height;
+
+
 
 console.log("CANVAS WIDTH: "+canvas.width);
 console.log("HEIGHT: "+canvas.height);
@@ -34,7 +40,7 @@ mouse.init(canvas);
 
 function draw(dt) {
     ctx.clearRect(0, 0, canvas.width, canvas.height); //clear the canvas
-    ctx.fillStyle = 'purple';
+    ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // if (availableAssets.music.bling) {availableAssets.music.bling.play()}
@@ -50,7 +56,7 @@ function draw(dt) {
     //         ctx.drawImage(availableAssets.images[img], playerController.x, playerController.y, canvas.width/2, canvas.height/2);
     //     }
     // }
-    ctx.drawImage(availableAssets.images["title"], sprite.x, sprite.y, canvas.width/6, canvas.height/6);
+    // ctx.drawImage(availableAssets.images["title"], sprite.x, sprite.y, canvas.width/6, canvas.height/6);
     // console.log(playerController.image);
     // if (availableAssets.images[playerController.image]) {
     //
@@ -86,7 +92,7 @@ function loop() {//MAIN GAME HAPPENS HERE
 
 
     update(deltaTime);
-
+    shakeEffect.update(deltaTime);
     // TweenService.update(deltaTime);
 
     if (gameState === "Start") { //we want to handle specific update functions accordingly to each game state
@@ -98,8 +104,9 @@ function loop() {//MAIN GAME HAPPENS HERE
     } else if (gameState === "Battle") {
         battle.update(deltaTime);
     }
-
     draw(deltaTime);
+
+    keyPressUpdate();
     requestAnimationFrame(loop);
 }
 
