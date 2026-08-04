@@ -1,24 +1,34 @@
 //this script handles ALL THINGS battle related
 
-import { actionDirectory, dodgeHandler, AnimationManager } from "./actionDirectory.js";
+import { actionDirectory, dodgeHandler, AnimationManager,playerActionDirectory } from "./actionDirectory.js";
 import { allyDirectory } from "./AllyDirectory.js";
 import { availableAssets } from "./AssetLoader.js";
 import { gameState, changeGameState } from "./main.js";
 import  {enemyDirectory} from "./enemyDirectory.js";
 // import { signal } from "./SignalService.js";
 import {world } from "./WorldHandler.js";
-import {newImage, newRect, newText} from "./Utility.js";
-import {keys, keybinds} from "./KeyboardInputHandler.js";
-import {playerInventory} from "./PlayerController.js";
+import {newImage, newRect, newText, randInt} from "./Utility.js";
+import {keys, keybinds, keyPresses} from "./KeyboardInputHandler.js";
+import {playerController, playerInventory} from "./PlayerController.js";
+import {itemDirectory} from "./ItemDirectory.js";
+import {tweenService} from "./TweenService.js";
+import {gameWidth, gameHeight} from "./main.js";
+import {attackMinigames} from "./actionDirectory.js";
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-const allyXBuffer = 100;
-const enemyXBuffer = 950;
-const heightBuffer = 200;
-const characterSize = 150;
-const heightAddon = 100;
+export const allyXBuffer = 320;
+export const enemyXBuffer = 1450;
+export const heightBuffer = 250;
+export const characterSize = 150;
+export const heightAddon = 250;
+
+const dialogueBoxWidth = 800;
+const dialogueBoxHeight = 200;
+const dialogueBoxX = (1920/2) - (dialogueBoxWidth / 2);
+const dialogueBoxTextSize  = 26;
+const dialogueBoxY = 30;
 
 class vector2D {//BASED ON CAMERA POSITION
     constructor(x,y,width,height,rotation) {
@@ -41,6 +51,24 @@ class vector2D {//BASED ON CAMERA POSITION
     }
 }
 
+const highlightBox = {x:470,y:0,width: 120, height: 50 }; // lives across frames
+
+function getMainMenuRect(index) {
+    const spacing = 150, startX = 470;
+    return { x: startX + index * spacing, y: 0, width: 120, height: 50 };
+}
+
+// --- the one-shot trigger ---
+
+function moveHighlightTo(targetRect) {
+    const info = tweenService.TweenInfo(0.18, "CubicOut");
+    const tween = tweenService.create(highlightBox, info, {
+        x: targetRect.x,
+        width: targetRect.width
+    });
+    tween.play(); // fires exactly once, right here — no flags needed
+}
+
 let battleCamera = {//allows us to have an independent camera
     x : 0,
     y : 0,
@@ -59,7 +87,7 @@ let battleCamera = {//allows us to have an independent camera
     }
 }
 
-export let playerTeam = ["Ketchup", "Ketchup", "Ketchup"];
+export let playerTeam = ["Cobalt","Illumine"];//TEMPORARY
 
 class entity{
     //percentage based modifiers
@@ -80,18 +108,19 @@ class entity{
         }
     }
 
-    constructor(stats,vectorData,side) {
+    constructor(stats,vectorData,side,teamIndex) {
         this.worldData = new vector2D(vectorData.x,vectorData.y,vectorData.width,vectorData.height,vectorData.rotation);
         this.maxStats = stats;//this contains original stats, sometimes we will have modifiers that change max stats at runtime so this is why we need this
-        this.health = stats.health;
-        this.defense = stats.defense;
-        this.attack = stats.attack;
-        this.energy = stats.energy;
-        this.speed = stats.speed;
-        this.offensive = {};
-        this.other = {};
+        this.health = {current: stats.health, max:stats.health};
+        this.defense = {current: stats.defense, max:stats.defense};
+        this.attack = {current: stats.attack, max:stats.attack};
+        this.energy = {current: stats.energy, max:stats.energy};
+        this.speed = {current: stats.speed, max:stats.speed};
+        this.actions = [];
+        this.other = [];
         this.name = stats.name;
         this.image = stats.image;
+        this.teamIndex = teamIndex;
         this.stats = [];
         if (side === "allies") {
             this.selectedAction = {
@@ -104,15 +133,13 @@ class entity{
         if (side === "enemies" && stats?.pattern){
             this.pattern = stats?.pattern;
         }
-        for (let action of stats.offensive) {
-            this.offensive[action] = actionDirectory[action]
+
+        for (let action of stats.actions) {
+            // this.offensive[action] = actionDirectory[action]
+            this.actions.push(action);
         }
 
-        for (let action of stats.other) {
-            this.other[action] = actionDirectory[action]
-        }
-
-        this.logic = stats.logic //allies should have this as undefined; the ally controller has a unique edge case for that
+        this.logic = stats?.logic //allies should have this as undefined; the ally controller has a unique edge case for that
         this.buffs = [];
         this.debuffs = [];
         this.alive = true;
@@ -143,7 +170,6 @@ export const battleStates = {//ENUM EQUIVALENT
 }
 
 export let battlefield = {
-
     turnOrder : [],
 
     allies : [],
@@ -151,6 +177,8 @@ export let battlefield = {
 
     cycle : 0,
     turn : 1,
+
+    backgroundData : [],
 
     previousState : battleStates.INACTIVE,
     state : battleStates.INACTIVE,
@@ -164,33 +192,77 @@ export let battlefield = {
 
     },
 
+    //UTILITY FUNCTIONS TO USE IN A BATTLE
+    //careful not to modify the "target" argument or else it won't reassign the original, passed parameter
+
+    grant(target,amount,stat){
+        if (target.stat.current + amount > target.stat.max) {
+            target.stat.current = target.stat.max;
+        } else {
+            target.stat.current += amount
+        }
+    },
+
+    damage(target,amount){
+
+    },
+
+    debuff(target,amount){
+
+    },
+
+    buffs(target,amount){
+
+    },
+
     createTurns() {
         this.turnOrder = [];
 
         for (let a in this.allies) {
-            this.turnOrder.push({name:a.name,spd:this.allies[a].spd});
+            this.turnOrder.push({name:this.allies[a].name,index: a,spd:this.allies[a].speed.current, side:"allies"});
         }
 
         for (let e in this.enemies) {
-            this.turnOrder.push({name:e.name,spd:this.enemies[e].spd});
+            this.turnOrder.push({name:this.enemies[e].name, index: e,spd:this.enemies[e].speed.current, side:"enemies"});
         }
 
         this.turnOrder.sort((a, b) => b.spd - a.spd);
+        console.log("turns created!");
     },
 
     //as soon as we call this, we offload control to actionDirectory.js
     grantTurn() {
+        let newCycle = false
         if (this.turn > this.turnOrder.length) {
             this.cycle++;
             this.turn = 1;
+            newCycle = true;
             //we are reconstructing the turn order every new CYCLE btw
         }
 
-        if (this.turnOrder[this.turn-1].side === "allies") {
-            battlefield.stateInfo = {menu : "battleMain"}
-        } else {
-            battlefield[this.turnOrder[this.turn-1].side][this.turnOrder[this.turn-1].who]?.logic();
-        }
+        // //apply buffs and debuffs or take them away if needed
+        // for (let a in this.allies) {
+        //     for (let buff in this.allies[a]) {
+        //         if (buff && (buff.triggerTime === "turn" || (buff.triggerTime === "cycle" && newCycle))) {
+        //             //trigger the effect first, then take away from it's duration (remove if needed)
+        //             buff.trigger();
+        //             buff.duration-=1;
+        //             if (buff.duration <= 0) {
+        //                 //take away effect and remove
+        //                 buff.undo();
+        //                 delete this.allies[a][buff];
+        //             }
+        //         }
+        //     }
+        // }
+
+
+        console.log(this.turnOrder[this.turn-1]);
+        console.log(battlefield)
+        battlefield[this.turnOrder[this.turn-1].side][this.turnOrder[this.turn-1].index]?.logic();
+        setState(battleStates.TURN_WAITING); //the entity's execute logic should trigger the next turn
+        console.log("turn granted!");
+        console.log("It's " +battlefield[this.turnOrder[this.turn-1].side][ this.turnOrder[this.turn-1].index].name + "'s turn!" );
     },
 }
 
@@ -208,21 +280,21 @@ export let battlefield = {
 *
 * */
 
-const mainUIIndexes = ["Attack","Other","Item","Defend"];
+const mainUIIndexes = ["Action","Item","Defend"];
 
 let battleUI = {//this purely handles ui which is drawn over everything,
 
     renderQueue : [],
     battleBoxText : "",
     state : {
+        targetType : "none",
         action : "none",
-        menuStack : [{name:"main",maxIndex:4,curIndex:0}],
-        parentMenu : "", //for backing out of a menu
+        menuStack : [{name:"main",maxIndex:3,curIndex:0}],
         allyIndex : 0,
         currentSelection : null,
         inputDebounce : true, //prevent multi triggers of input
         debounceAccumulation:0,
-        debounceTimer:0.15,
+        debounceTimer:0,
     },
 
     update(deltaTime) {
@@ -235,41 +307,84 @@ let battleUI = {//this purely handles ui which is drawn over everything,
             }
         }
         if (!this.state.inputDebounce) {
-            if (keys[keybinds.Interact]) {
+            if (keyPresses[keybinds.Interact]) {
                 //TOP HIERARCHY; MAIN MENU
-                this.state.inputDebounce = true;
-                if (this.state.menuStack[this.state.menuStack.length-1].name === "main") {
-                    if (mainUIIndexes[curMenu.curIndex] === "Attack") {
-                        //find all of that ally's moves
-                        this.state.menuStack.push({name: "offensive",maxIndex: battlefield.allies[this.state.allyIndex].offensive.length,curIndex:0});
-                    } else if (mainUIIndexes[curMenu.curIndex] === "Other") {
-                        this.state.menuStack.push({name: "other",maxIndex: battlefield.allies[this.state.allyIndex].other.length,curIndex:0});
-                    } else if (mainUIIndexes[curMenu.curIndex] === "Defend") {
-                        //increase defense by 1 for that turn and grant some energy back
-                        //make the logic block give back energy
-                    } else if (mainUIIndexes[curMenu.curIndex] === "Item") {
-                        //look through the player's inventory (playerController)
-                        this.state.menuStack.push({name:"item",maxIndex:playerInventory.length,curIndex:0});
+                if (this.state.allyIndex <= battlefield.allies.length - 1) {
+                    this.state.inputDebounce = true;
+                    let curAllyInBattle = battlefield.allies[this.state.allyIndex];
+                    let currentMenuName = this.state.menuStack[this.state.menuStack.length-1].name;
+                    if (currentMenuName === "main") {
+                        if (mainUIIndexes[curMenu.curIndex] === "Action") {
+                            //find all of that ally's moves
+                            this.state.menuStack.push({name: "actions",maxIndex: curAllyInBattle.actions.length,curIndex:0});
+                        } else if (mainUIIndexes[curMenu.curIndex] === "Other") {
+                            this.state.menuStack.push({name: "other",maxIndex: curAllyInBattle.other.length,curIndex:0});
+                        } else if (mainUIIndexes[curMenu.curIndex] === "Defend") {
+                            curAllyInBattle.logic = () => battlefield.grant(curAllyInBattle,12,"energy");
+                        } else if (mainUIIndexes[curMenu.curIndex] === "Item") {
+                            //look through the player's inventory (playerController)
+                            this.state.menuStack.push({name:"item",maxIndex:playerInventory.length,curIndex:0});
+                        }
+                    } else if (currentMenuName === "actions") {
+                        this.state.targetType = playerActionDirectory[curAllyInBattle.actions[curMenu.curIndex]].targetType;
+                        this.state.menuStack.push({name:"target",maxIndex:battlefield[this.state.targetType].length,curIndex:0});
+
+                    }  else if (currentMenuName === "item") {
+                        this.state.targetType = itemDirectory[playerInventory[this.state.menuStack[this.state.menuStack.length-1].curIndex]].targetType;
+                        this.state.menuStack.push({name:"target",maxIndex:battlefield[this.state.targetType].length,curIndex:0});
+
+                    } else if (currentMenuName === "target") {
+                        let designatedTarget = battlefield[this.state.targetType][this.state.menuStack[this.state.menuStack.length-1].curIndex];
+                        //check what the previous state before the target was
+                        if (this.state.menuStack[this.state.menuStack.length-2].name === "actions") {
+                            let selectedAction = curAllyInBattle[ this.state.menuStack[this.state.menuStack.length-2].name ][ this.state.menuStack[this.state.menuStack.length-2].curIndex];
+                            console.log(selectedAction);
+                            curAllyInBattle.logic = () => playerActionDirectory[selectedAction].execute(curAllyInBattle, designatedTarget,this.state.targetType);
+                            console.log("wrote to " + curAllyInBattle.name + "'s logic block")
+
+                            if (curAllyInBattle[this.state.menuStack[this.state.menuStack.length-2].name].length > 0) {}
+                        } else if (this.state.menuStack[this.state.menuStack.length-2].name === "item") {
+                            //specifically search the player's inventory and rid of the item as they are one time use (splice)
+                            let selectedItem = itemDirectory[playerInventory[this.state.menuStack[this.state.menuStack.length-2].curIndex]];
+                            curAllyInBattle.logic = () => battlefield.grant(designatedTarget,
+                                selectedItem.type === "heal"? selectedItem.heal : selectedItem.type === "damage"? selectedItem.damage : null,
+                                "health"
+                            );
+                            playerInventory.splice(playerInventory[this.state.menuStack[this.state.menuStack.length-2].curIndex],1);
+                        }
+                        //THIS IS THE FINAL CONFIRMATION STEP!
+                        //MOVE UP THE ALLY INDEX AND RESET MENU STACK TO THE DEFAULT!
+                        if (this.state.allyIndex + 1 <= battlefield.allies.length-1) {this.state.allyIndex++;} else {
+                            setState(battleStates.CREATE_TURN_ORDER);
+                            this.state.action = "idle"
+                        }
+                        this.state.menuStack = [{name:"main", maxIndex:3, curIndex:0}];
                     }
                 }
-            } else if (keys[keybinds.MenuNavigationLeft]) {
+            } else if (keyPresses[keybinds.MenuNavigationLeft]) {
                 this.state.inputDebounce = true;
-                if (this.state.menuStack[this.state.menuStack.length - 1].curIndex - 1 >= 0) {this.state.menuStack[this.state.menuStack.length - 1].curIndex--;}
-            } else if (keys[keybinds.MenuNavigationRight]) {
+                if (this.state.menuStack[this.state.menuStack.length - 1].curIndex - 1 >= 0) {this.state.menuStack[this.state.menuStack.length - 1].curIndex--;if (curMenu.name === "main") moveHighlightTo(getMainMenuRect(curMenu.curIndex));}
+            } else if (keyPresses[keybinds.MenuNavigationRight]) {
                 this.state.inputDebounce = true;
-                if (this.state.menuStack[this.state.menuStack.length - 1].curIndex  < this.state.menuStack[this.state.menuStack.length - 1].maxIndex) {this.state.menuStack[this.state.menuStack.length - 1].curIndex++;}
-            } else if (keys[keybinds.MenuBack]) {
+                if (this.state.menuStack[this.state.menuStack.length - 1].curIndex  < this.state.menuStack[this.state.menuStack.length - 1].maxIndex-1) {this.state.menuStack[this.state.menuStack.length - 1].curIndex++;if (curMenu.name === "main") moveHighlightTo(getMainMenuRect(curMenu.curIndex));}
+            } else if (keyPresses[keybinds.MenuBack]) {
                 this.state.inputDebounce = true;
                 //return to parent block, but if null, do nothing
+                if (this.state.allyIndex > 0 && this.state.menuStack.length ===1) {
+                    this.state.menuStack = [{name:"main", maxIndex:3, curIndex:0}];
+                    this.state.allyIndex--;
+                }
                 if (this.state.menuStack.length > 1) {
                     this.state.menuStack.pop();
                 }
+
             }
         }
 
     },
 
     draw(){
+        let currentMenuName = this.state.menuStack[this.state.menuStack.length-1].name
         //ALWAYS DRAW HEALTH AND ENERGY BELOW EACH ENTITY
         //draw a red/green box that keeps track of how many debuffs/buffs an entity has, the player can click on them to view what they are
         if (this.state.action === "player") {
@@ -277,50 +392,86 @@ let battleUI = {//this purely handles ui which is drawn over everything,
 
             //TEMPORARY; WILL GET DRAWN OUT WITH PROPER DATA LATER
 
+            if (currentMenuName === "main") {
+                let curMenu = this.state.menuStack[this.state.menuStack.length-1];
 
-            if (this.state.menuStack[this.state.menuStack.length-1].name === "main") {
-                let OffensiveActionBlock = newRect("player_offensive",currentAlly.worldData.x + 75,currentAlly.worldData.y+50,50,50,"rgb(255,255,255)");
-                OffensiveActionBlock.draw();
-                let tt = newText("jw",currentAlly.worldData.x + 75,currentAlly.worldData.y + 50 + 16,"rgb(0,0,0)","16px Arial",mainUIIndexes[this.state.menuStack[this.state.menuStack.length-1].curIndex]);
+                // the moving highlight — reads whatever x/width the tween currently has, mid-animation or not
+                let highlight = newRect("mainMenuHighlight", highlightBox.x, highlightBox.y, highlightBox.width, highlightBox.height, "rgba(255,255,255,0.35)");
+                highlight.draw();
+
+                // all 4 labels, computed fresh from layout, no persistence needed
+                for (let i = 0; i < mainUIIndexes.length; i++) {
+                    highlightBox.y = currentAlly.worldData.y+45;
+                    let rect = getMainMenuRect(i);
+                    let label = newText("mainMenuLabel"+i, rect.x + 10, currentAlly.worldData.y + 85, "rgb(0,255,255)", "16px Arial", mainUIIndexes[i]);
+                    label.draw();
+                }
+                // let OffensiveActionBlock = newRect("player_offensive",currentAlly.worldData.x + 75,currentAlly.worldData.y+50,50,50,"rgb(255,255,255)");
+                // OffensiveActionBlock.draw();
+                // let tt = newText("jw",currentAlly.worldData.x + 75,currentAlly.worldData.y + 50 + 16,"rgb(0,0,0)","16px Arial",mainUIIndexes[this.state.menuStack[this.state.menuStack.length-1].curIndex]);
+                // tt.draw();
+                //
+                // let tct = newText("jfw",currentAlly.worldData.x,currentAlly.worldData.y,"rgb(255,255,255)","16px Arial",currentAlly.name);
+                // tct.draw();
+
+
+                // let offensiveBlock = newText("player_offensive_menu",100,200,"rgb(255,255,255)","16px Arial","AAAAAAAAAAAAAAAAAA");
+                // offensiveBlock.draw();
+
+                //TWEEN THE ABOVE TO MOVE TOWARD THE POSITION FROM A STARTING POINT
+
+
+            } else if (currentMenuName === "actions") {
+                let tt = newText("jw",currentAlly.worldData.x + 150,currentAlly.worldData.y + 50 + 16,"rgb(255,0,0)","16px Arial",battlefield.allies[this.state.allyIndex].actions[this.state.menuStack[this.state.menuStack.length-1].curIndex]);
                 tt.draw();
 
-                let tct = newText("jfw",currentAlly.worldData.x,currentAlly.worldData.y,"rgb(255,255,255)","16px Arial",currentAlly.name);
-                tct.draw();
-            } else if (this.state.menuStack[this.state.menuStack.length-1].name === "offensive") {
-                let tt = newText("jw",currentAlly.worldData.x + 75,currentAlly.worldData.y + 50 + 16,"rgb(255,0,0)","16px Arial","ATTACCCCCK");
+            } else if (currentMenuName === "target") {
+                let tt = newText("jw",currentAlly.worldData.x + 150,currentAlly.worldData.y + 50 + 16,"rgb(255,255,255)","16px Arial","yo target someone twin");
                 tt.draw();
+
+                //also draw a box around the person being targeted (TWEEN IT TWIN)
+                let newBox = newRect("entityHighlight",
+                    battlefield[this.state.targetType][this.state.menuStack[this.state.menuStack.length-1].curIndex].worldData.x - 15,
+                    battlefield[this.state.targetType][this.state.menuStack[this.state.menuStack.length-1].curIndex].worldData.y - 15,
+                    150 + 30,
+                    150 + 30,
+                    "rgb(255,255,255,0.5)");
+                newBox.draw();
             }
         }
 
-        let dialogueBoxBG = newRect("dialogueBoxBG",350,20,500,150,"rgb(255,255,255)");
+        let dialogueBoxBG = newRect("dialogueBoxBG",dialogueBoxX,dialogueBoxY,dialogueBoxWidth,dialogueBoxHeight,"rgb(255,255,255)");
         dialogueBoxBG.draw();
 
-        let dialogueBoxText = newText("dialogueBoxText",350,20 + 16,"rgb(0,0,0)","16px Arial",this.battleBoxText);
+        let dialogueBoxText = newText("dialogueBoxText",dialogueBoxX + 10,dialogueBoxY + dialogueBoxTextSize + 10,"rgb(0,0,0)",dialogueBoxTextSize+"px Arial",this.battleBoxText);
         dialogueBoxText.draw();
+
+        //draw all hp and energy bars for allies, do not draw energy bars for enemies however
     },
 }
 
-function setState(newState) {
+export function setState(newState) {
     battlefield.state = newState;
+    console.log(battlefield.state);
 
-    switch(newState) {
-        case battleStates.CREATE_TURN_ORDER:
-            battlefield.createTurns();
-            break;
-        case battleStates.TURN_WAITING:
-            battlefield.grantTurn();
-            break;
-        case battleStates.BATTLE_END:
-            // cleanup
-            break;
-    }
+    // switch(newState) {
+    //     case battleStates.CREATE_TURN_ORDER:
+    //         battlefield.createTurns();
+    //         break;
+    //     case battleStates.TURN_WAITING:
+    //         battlefield.grantTurn();
+    //         break;
+    //     case battleStates.BATTLE_END:
+    //         // cleanup
+    //         break;
+    // }
 }
 
 export let battle = {
     currentSong : "",//FILE PATH NAME, NOT MP3
 
     //initializes the whole field and updates game state + screen state
-    start( enemyData ,area) {
+    start( enemyData ,area, backgroundData) {
         //area determines battle music unless enemy overrides it, it also determines bg
         let worldArea = world.locations[area];
         //checks what music to use
@@ -332,17 +483,25 @@ export let battle = {
 
         //load all allies
         for (let allyIndex=0; allyIndex < playerTeam.length;allyIndex++) {
-            battlefield.allies.push(new entity(allyDirectory[playerTeam[allyIndex]],new vector2D(allyXBuffer,(heightBuffer * allyIndex) + heightAddon,characterSize,characterSize,0),"allies"));
+            battlefield.allies.push(new entity(allyDirectory[playerTeam[allyIndex]],new vector2D(allyXBuffer,(heightBuffer * allyIndex) + heightAddon,characterSize,characterSize,0),"allies",allyIndex));
         }
         console.log(enemyData)
         //load all enemies
         for (let enemyIndex = 0; enemyIndex < enemyData.length;enemyIndex++){
-            battlefield.enemies.push(new entity(enemyDirectory[enemyData[enemyIndex]],new vector2D(enemyXBuffer,(heightBuffer * enemyIndex) + heightAddon,characterSize,characterSize,0),"enemies"));
+            battlefield.enemies.push(new entity(enemyDirectory[enemyData[enemyIndex]],new vector2D(enemyXBuffer,(heightBuffer * enemyIndex) + heightAddon,characterSize,characterSize,0),"enemies",enemyIndex));
         }
 
-        battleUI. battleBoxText = "You started a fight!";
+        battleUI.battleBoxText = "You started a fight!";
 
         battlefield.state = battleStates.PLAYER_SELECTION;
+
+        if (backgroundData) {
+            for (let index = 0; index < backgroundData.length; index++) {
+                battlefield.backgroundData.push(backgroundData[index]);
+            }
+        }
+
+
         changeGameState("Battle");
     },
 
@@ -357,7 +516,16 @@ export let battle = {
         if (battlefield.state === battleStates.PLAYER_SELECTION) {
             let allReady = battlefield.allies.every(ally => ally.selectedAction.subcategory);
             battleUI.state.action = "player";
-            if (allReady) {setState(battleStates.TURN_WAITING); console.log("all ready"); }
+            // console.log(allReady);
+            // if (allReady) {setState(battleStates.TURN_WAITING); console.log("all ready"); }
+        } else if (battlefield.state === battleStates.CREATE_TURN_ORDER) {
+            battlefield.createTurns();
+            setState(battleStates.TURN_START);
+        } else if (battlefield.state === battleStates.TURN_START) {
+            battlefield.grantTurn();
+        } else if (battlefield.state === battleStates.TURN_WAITING) {
+            attackMinigames.updateCurrentMinigames(deltaTime);
+            //We do not need to do this for enemies since Animation manager technically handles their choreographs
         }
         //check battle state and fire one-time functions then, otherwise, TURN_WAITING should do nothing
     },
@@ -369,13 +537,22 @@ export let battle = {
         //DRAW ALL CHARACTERS
         //draw the background first
 
+        for (let bgE of battlefield.backgroundData) {
+            if (bgE.rectangle) {
+                newRect("BG_"+bgE.name,bgE.x,bgE.y,bgE.width,bgE.height,bgE.color).draw();
+            } else {
+                ctx.drawImage(availableAssets.images[bgE.image],bgE.x,bgE.y,bgE.width,bgE.height);
+            }
+
+        }
+
 
         for (let ally in battlefield.allies) {
             ctx.drawImage(availableAssets.images[battlefield.allies[ally].image],
                 battlefield.allies[ally].worldData.x - battleCamera.x,
                 battlefield.allies[ally].worldData.y - battleCamera.y,
-                150,
-                150
+                characterSize,
+                characterSize
             );
             // battlefield.allies[ally].draw();
         }
@@ -384,12 +561,13 @@ export let battle = {
             ctx.drawImage(availableAssets.images[battlefield.enemies[enemy].image],
                 battlefield.enemies[enemy].worldData.x - battleCamera.x,
                 battlefield.enemies[enemy].worldData.y - battleCamera.y,
-                150,
-                150
+                characterSize,
+                characterSize
             );
         }
 
         //DRAW UI ON TOP
+        attackMinigames.existingMinigames[0]?.draw();
         battleUI.draw();
     }
 
