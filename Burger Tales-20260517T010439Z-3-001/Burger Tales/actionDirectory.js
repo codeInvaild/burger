@@ -1,8 +1,9 @@
 import { tweenService } from "./TweenService.js";
 import {keys, keybinds, keyPresses, keyReleases} from "./KeyboardInputHandler.js";
-import {allyXBuffer, battle, battlefield, battleStates, heightAddon, setState} from "./BattleHandler.js";
-import { newText, newRect, randInt,shakeEffect } from "./Utility.js";
+import {allyXBuffer, battle, battlefield, battleStates, heightAddon, heightBuffer, setState} from "./BattleHandler.js";
+import { newText, newRect, randInt,shakeEffect, } from "./Utility.js";
 import {gameHeight,gameWidth} from "./main.js";
+import {availableAssets, playSoundEffect} from "./AssetLoader.js";
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -158,7 +159,7 @@ export let playerActionDirectory = {
         execute : function(self,target,targetSide){
             console.log("successfully triggered")
             console.log(self);
-            tweenService.create(self.worldData,tweenService.TweenInfo(1,"SineOut"),{x:target.worldData.x - (self.worldData.width + 20)}).play();
+            tweenService.create(self.worldData,tweenService.TweenInfo(1,"SineOut"),{x:target.worldData.x - (self.worldData.width + 20), y:target.worldData.y}).play();
             setTimeout(function(){
                 let c = new attackMinigames("sword",{},self,target);
             },1000)
@@ -248,11 +249,22 @@ export class attackMinigames {
                     if (keyReleases[keybinds.Action]) {//this should be when the dmg is calculated, and we give up the turn
                         if (this.objects.tickX >= this.objects.padAreaX && this.objects.tickX <= this.objects.padAreaX + this.objects.padAreaWidth) {
                             battlefield.damage(target,self.attack.current);
+                        } else {
+                            battlefield.damage(target,1);
+                            for (let fun = 0; fun < 25;fun++) {
+                                // playSoundEffect("click");
+                                availableAssets.sounds["click"].play();
+                                setTimeout(() => {battlefield.damage(target,fun);},100*fun);
+                            }
+
+
+
+
                         }
-                        tweenService.create(self.worldData,tweenService.TweenInfo(0.5,"SineOut"),{x:(self.teamIndex * heightAddon) + allyXBuffer}).play();
+                        tweenService.create(self.worldData,tweenService.TweenInfo(0.5,"SineOut"),{x:allyXBuffer,y:(self.teamIndex * heightAddon) + heightBuffer}).play();
                         this.objects.movingBack = true;
+
                         new shakeEffect(target.worldData,25,0.5);
-                        new shakeEffect(target.worldData,250,1);
                         attackMinigames.existingMinigames.shift();
                         battlefield.turn++;
                         setState(battleStates.TURN_START);
@@ -273,9 +285,11 @@ export class attackMinigames {
                 this.objects = {
 
                 }
-                this.update = function(deltaTime){};
+                this.update = function(deltaTime){
+
+                };
                 this.draw = function(){
-                    newText("guidance2",(gameWidth/2) - 500,800 - 24,"rgb(255,255,255)","24px Arial","Hold your ACTION key to move the tick right, try to keep it in the GREEN area! Let go to move it left, don't let it hit the edges").draw();
+                    newText("guidance2",(gameWidth/2) - 650,800 - 24,"rgb(255,255,255)","24px Arial","Hold your ACTION key to move the tick right, try to keep it in the GREEN area! Let go to move it left, don't let it hit the edges").draw();
                 };
                 break;
             case "pirate":
