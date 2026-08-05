@@ -65,6 +65,18 @@ export function newText(id,x,y,color="rgb(255,255,255)",font = "16px Arial",text
     return renderedShapes[id];
 }
 
+export function newFilledText(id,x,y,color="rgb(255,255,255)",font = "16px Arial",text = "hello!") {
+    renderedShapes[id] = {X:x,Y:y,Color:color,Font : font, Text : text, draw : function(){
+            ctx.font = renderedShapes[id].Font;
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = "black";
+            ctx.strokeText(renderedShapes[id].Text, x, y);
+            ctx.fillStyle = renderedShapes[id].Color;
+            ctx.fillText(renderedShapes[id].Text, renderedShapes[id].X, renderedShapes[id].Y);
+        }}
+    return renderedShapes[id];
+}
+
 export class shakeEffect {
     static shakes = []
     static update = function(deltaTime){
@@ -100,6 +112,98 @@ export class shakeEffect {
     }
 }
 
+export class damageCounter {
+    static counter = 0;
+    static allCounters = [];
+    static globalDurationSec = 1.5;
+
+    static maths = {
+        //total accumulated distance: 105px
+        firstRadius:30, //IN PIXELS
+        secondRadius:20,
+        thirdRadius:5,
+        fourthRadius:2,
+        clampingAngle:180, //degrees
+    }
+
+    static update(deltaTime) {
+        for (let counterIndex = 0; counterIndex < damageCounter.allCounters.length; counterIndex++) {
+            let curCount = damageCounter.allCounters[counterIndex];
+            curCount.elapsedTime += deltaTime;
+            if (curCount.elapsedTime > damageCounter.globalDurationSec) {damageCounter.allCounters.splice(counterIndex, 1);}
+            //first 2/4ths of the animation should be dedicated to the bounce anim, the last 1/4 should be it static and fading out linearly
+            //the 3/4 mark should just be the number static, nothing happening to it
+            let percentDone = curCount.elapsedTime / damageCounter.globalDurationSec;
+            if (percentDone <= 0.5) {//halfway
+                //bounce from the origin point
+                let subPercent = percentDone / 0.5;
+                if (subPercent <= 0.25) {
+                    //use the firstRad as a ref
+
+                    let radians =  Math.PI * (subPercent/0.25);
+
+                    curCount.x = curCount.startX + (this.maths.firstRadius * (1 + Math.cos( (Math.PI - radians) )) );
+                    curCount.y = curCount.startY +this.maths.firstRadius * Math.sin(-radians);
+
+                } else if (subPercent <= 0.5) {
+                    //use the secondRad as a ref
+                    let radians =  (Math.PI * ((subPercent-0.25)/0.25));
+
+                    curCount.x = (this.maths.firstRadius *2) + curCount.startX + ( this.maths.secondRadius * (1 + Math.cos(Math.PI -radians)) ) ;
+                    curCount.y = curCount.startY +this.maths.secondRadius * Math.sin(-radians);
+
+                } else if (subPercent <= 0.75) {
+                    //use the thirdRad as a ref
+                    let radians =  Math.PI * ((subPercent-0.5)/0.25);
+                    curCount.x = ((this.maths.firstRadius +this.maths.secondRadius) * 2) + ( curCount.startX +this.maths.thirdRadius * (1 + Math.cos(Math.PI -radians)) ) ;
+                    curCount.y = curCount.startY +this.maths.thirdRadius * Math.sin(-radians);
+                } else {
+                    let radians =  Math.PI * ((subPercent-0.75)/0.25);
+                    curCount.x = ((this.maths.firstRadius +this.maths.secondRadius +this.maths.thirdRadius) * 2) + (curCount.startX +this.maths.fourthRadius * (1 + Math.cos(Math.PI -radians)));
+                    curCount.y = curCount.startY +this.maths.fourthRadius * Math.sin(-radians);
+                }
+
+            } else if (percentDone <= 0.75) {
+                //third quarter, stay still and do nothing. Let the player see the number
+            } else {
+                let lastPercentile = percentDone - 0.75;
+                curCount.colorAlpha = 1-(lastPercentile /0.25)
+            }
+            if (percentDone >=1) {damageCounter.allCounters.splice(counterIndex, 1);}
+
+
+
+
+
+        }
+    }
+    static draw() {
+        for (let counterIndex = 0; counterIndex < damageCounter.allCounters.length; counterIndex++) {
+            let curCount = damageCounter.allCounters[counterIndex];
+            newFilledText(curCount.name,curCount.x,curCount.y,curCount.color+curCount.colorAlpha+")","36px Arial",curCount.amount).draw();
+
+            // newText(curCount.name,curCount.startX,curCount.startY,curCount.color,"26px Arial",curCount.amount).draw();
+        }
+    }
+
+    constructor(amount,startX,startY,colorOverride ) {
+        this.amount = amount;
+        this.startX = startX;
+        this.startY = startY;
+        this.x = startX;
+        this.y = startY;
+        this.currentDegree = 0;
+        this.color = colorOverride  ? colorOverride : "rgb(255,255,255,";
+        console.log(colorOverride);
+        console.log(this.color);
+        this.colorAlpha = 1;
+        damageCounter.counter++;
+        this.name = "damageCounter_"+damageCounter.counter;
+        this.elapsedTime = 0;
+        // console.log("created new damage counter  " + startX);
+        damageCounter.allCounters.push(this);
+    }
+}
 
 
 export function drawAllShapes() {for (const shape in renderedShapes) {renderedShapes[shape].draw()}}
