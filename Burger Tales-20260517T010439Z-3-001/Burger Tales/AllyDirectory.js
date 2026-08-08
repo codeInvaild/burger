@@ -1,107 +1,97 @@
+export let healthBarColor = {
+    Cobalt:"rgb(0,217,255)",
+    Illumine:"rgb(231,139,106)",
+}
+
 export let allyDirectory = {
     //allies do not need logic, they call on the player to do the logic for them
 
     /*
     * ACTIONS:
-    *   Tomato: Throws a tomato at the target to attempt and humiliate them; deals ATK + 1 damage
-    *   Bake : Make a pastry for an ally and heal them for 100% of Ketchup's max health
+    *   base move:
+    *   Slash : deal 1x ATTACK to 1 enemy for 1 energy
     *
-    *   Harvest: Make a large harvest and heal ALL allies for half of Ketchup's max health
+    *   extras:
+    *   Takedown: deal 2.5x ATTACK to 1 enemy for 15 energy
+    *   IronRush: Deal 1x DEFENSE type damage to 1 enemy for 10 energy, completely piercing their defense
+    *   EdgeGuard: grant yourself the PARRY buff for 2 turns, for 10 energy
     * */
 
-    Ketchup : {
-        image: "ketchup", //path to an image using availableAssets
-        name : "Ketchup",
-        health: 40,
-        defense : 6,
-        attack : 4,
-        energy: 24, //some actions use energy because they are stronger / enhanced
-        speed : 5,
-        offensive : ["attack"], //ONLY damage or debuffing moves
-        other : ["harvest"],
+    Cobalt : {
+        image: "cobalt", //path to an image using availableAssets
+        name : "Cobalt",
+        health: 60,
+        defense : 40,
+        attack : 6,
+        energy: 25, //some actions use energy because they are stronger / enhanced
+        speed : 94,//TEMPORARY 99, HIS REGULAR SPEED IS 14
+        actions : ["slash","shatter","rectal exam 9000"], //ONLY damage or debuffing moves
     },
 
     /*
     * Actions:
-    *   Sit: Gain back all energy at the cost of your next turn
-    *   Power Slash : An attack that uses ATK dmg and pierces through defense
-    *   Heavy Hitter : An attack dealing ATK +3 dmg
+    *   Base move:
+    *   Wack: deal 1x ATTACK to 1 enemy for 1 energy
     *
-    *   Chair Throw: Able to hit airborne targets
-    *
+    *   extras:
+    *   Fireball: deal 2x ATTACK to 1 enemy and apply FIRE debuff for 15 energy
+    *   DragonFlame: Deal 1x ATTACK to 3 enemies for 20 energy
+    *   Stagger: Randomly increase the potency of 1 debuff on an enemy by 1 stack for 10 energy
     *
     * */
 
-    Sr_Chairington : {//MAIN DAMAGE DEALER
-        name : "Sir Chairington the second coming of the chair society",
-        health : 80,
-        defense : 10,
+    Illumine : {//MAIN DAMAGE DEALER
+        image:"illumine",
+        name : "Illumine",
+        health : 35,
+        defense : 0,
         attack :7,
-        energy : 38,
-        speed : 3,
-        actions : [],
+        energy : 35,
+        speed : 18,
+        actions : ["wack","fireball","bigfart2"],
     },
 
 
     /*
     * Spells:
-    *   Fireball : Basic spell that deals AoE (1) if perfectly timed, otherwise deals ATK dmg to main target
-    *   Smite : Thunderbolt bruh, dealing ATK damage and possible chance to apply shock
+    *   base move:
+    *   Splash: WET an enemy , increasing the guard window for their next attack (easier dodges) for 5 energy
     *
-    *
-    *
-    *   Convince : Can force a summoned ally to execute a specific action on your behalf
-    *   Kraken Entangle: Wraps a target and has a very high chance to stun them, dealing minor damage (ATK/4)
-    *
-    *
-    *
-    *
+    *   extras:
+    *   Empower: Increase an ally's attack by 1 for their next attack, for 10 energy
+    *   SweetLullaby: 30% base chance to cause an enemy to SLEEP, otherwise apply FATIGUE for 15 energy
+    *   MoonlightIllusion: create a dummy that enemies can target, that dummy has higher target priority.
     *
     * */
-    Grace : {//DEBUFFER / BUFFER
-        health : 60,
-        defense : 6,
-        attack : 9,
-        energy :30,
-        speed : 5,
-        actions : [],
+    Flurrine : {//DEBUFFER / BUFFER
+        name : "Flurrine",
+        health : 50,
+        defense : 2,
+        attack : 2,
+        energy :50,
+        speed : 16,
+        actions : ["splash"],
     },
     //
 
 
     /*
     * spells:
-    *   Banana Peel : Attempt to trip an opponent: if successful, has a 50% chance to confuse them and deal ATK dmg
-    *   Ice Blast : Slow a target by about 3-5 speed values; deal 3 dmg flat
-    *   Magic Storm : Charge up an attack that deals 600% damage
+    *   base move:
+    *   Shotgun: Deal damage to an enemy up close in a burst of 3 shots, dealing his 1x ATTACK each, you can intentionally hit the yellow zones to deal damage to adjacent targets
     *
     * */
-    Senior_Platano : {//SUPPORT DEBUFF / AIR DAMAGE DEALER
-        name : " Senior Platano the first born of the underground underdogs",
-        health : 80,
-        defense : 6,
-        attack: 1,
-        energy : 30,
-        speed : 5,
-        actions : [],
+    Spear : {//SUPPORT DEBUFF / AIR DAMAGE DEALER
+        name : " Spear",
+        health : 45,
+        defense : 3,
+        attack: 3,
+        energy : 35,
+        speed : 20,
+        actions : ["shotgun"],
     },
 
-    /*
-    * Attacks:
-    *   Bow: deals X atk
-    *   Flurry: Deals x+2 atk in a series of 5 shots
-    *
-    *   Cross Shot Deals x/3 (ROUNDED)  to 3 targets, shots are wasted if there are fewer than 3 enemies on the field
-    *
-    * */
-    Arch : { //MAIN AIR DAMAGE DEALER / SUB DPS
-        health : 40,
-        defense : 3,
-        attack:7,
-        energy : 38,
-        speed : 6,
-        actions : [],
-    },
+
 }
 
 
