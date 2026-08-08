@@ -1,11 +1,10 @@
-import { assets, availableAssets } from "./AssetLoader.js"
+import {assets, availableAssets, playMusic} from "./AssetLoader.js"
 import { playerController, camera } from "./PlayerController.js"
-import {intersects, newRect} from "./Utility.js";
+import {intersects, newAreaTint, newRect,hashStringToSeed} from "./Utility.js";
 import { dialogue } from "./dialogueClass.js"
 import { dialogueDirectory } from "./dialogueDirectory.js"
 import { battle } from "./BattleHandler.js"
-
-// dialogue.resolve("guy");
+import {newLightingLayer, renderedShapes} from "./Utility.js";
 
 export let location = "Woodrock_Southern_Entrance";
 
@@ -69,7 +68,8 @@ function autoTiler(tilemap, parentName) {
         }
         world.precomputedTileset.push(row);
     }
-
+    console.log(world.precomputedTileset[0].length);
+    console.log(world.precomputedTileset.length);
     return world.precomputedTileset;
 }
 
@@ -89,31 +89,32 @@ export let world = {
     locations : {
         "Woodrock_Southern_Entrance" : {
             Tilemap: [//TILE MAPS MUST BE SQUARE!!!!
-                [0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0],
-                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,0,0,1,0,0,0,0,2,2,2,0,0,0,0,0],
-                [0,0,0,1,0,0,0,0,2,2,2,0,0,0,0,0],
-                [0,0,0,1,0,0,0,0,2,2,2,0,0,0,0,0],
-                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0], //16 x 16
+                [0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,1,0,0,0,0,2,2,2,0,0,0,0,0,0,0,0,0],
+                [0,0,0,1,0,0,0,0,2,2,2,0,0,0,0,0,0,0,0,0],
+                [0,0,0,1,0,0,0,0,2,2,2,0,0,0,0,0,0,0,0,0],
+                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,1,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,2], //20 x 16
             ],
-            Music: "",
-            battleMusic : "bling",
+            LightLevel: 0.4,
+            Music: "dark_sanct",
+            battleMusic : "black_knife",
             Areas: [//DRAWN FROM Y-PRIORITY, DO NOT CARE FOR HOW YOU ORDER THEM
                 {id : "guy", image: "man", imageData : {x:600, y:500,width:150, height:150},collisionData: {x:0,y:0,width:150,height:150}, interaction: {dialogue : "guy"}},
                 {id : "guy", image: "man", imageData : {x:500, y:500,width:150, height:150},collisionData: {x:0,y:0,width:150,height:150}, interaction: {dialogue : "dog"}},
                 {id : "guy", image: "man", imageData : {x:400, y:500,width:150, height:150},collisionData: {x:0,y:0,width:150,height:150}, interaction: {dialogue : "dog"}},
                 {id : "guy", image: "man", imageData : {x:300, y:500,width:150, height:150},collisionData: {x:0,y:0,width:150,height:150}, interaction: {dialogue : "dog"}},
-                {id : "guy", image: "man", imageData : {x:100, y:500,width:150, height:150},collisionData: {x:0,y:0,width:150,height:150}, interaction: {battle : ["grass_dweller","grass_dweller"]}},
+                {id : "guy", image: "man", imageData : {x:100, y:500,width:150, height:150},collisionData: {x:0,y:0,width:150,height:150}, interaction: {battle : {enemies : ["grass_dweller","grass_dweller"], backgroundData: [{name:"sky",x:0,y:0,width:1920,height:1080,image:"sky"},{name:"grass",rectangle:true,x:0,y:300,width:1920,height:1080,color:"rgb(39,129,95)"}] }}},
                 {id: "tree1", image: "tree2", imageData : {x:200,y:200,width:300,height:300}, collisionData: {x:150,y:0,width:100,height:100}},
             ],
             Foliage : [//high level foliage
@@ -121,6 +122,7 @@ export let world = {
             ],
             Next: {
                 Left : "Woodrock_Plaza",
+                Right : "waterTest",
             },
         },
         "Woodrock_Plaza" : {
@@ -142,28 +144,56 @@ export let world = {
                 [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
                 [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0], //16 x 16
             ],
-            Music : "",
+            Music : "dark_sanct",
+            LightLevel:0.1,
+            Tint: {color:"rgb(31,89,234)",opacity:0.8},
             Areas: [
                 {id : "guy", image: "man", imageData : {x:600, y:500,width:150, height:150},collisionData: {x:0,y:0,width:150,height:150}, interaction: {dialogue : "guy"}},
+                {id : "wom", image: "woman", imageData : {x:800, y:500,width:150, height:150},collisionData: {x:0,y:0,width:130,height:150}, interaction: {dialogue : "textTester"}},
+                {id : "lamp", image:"cornball",imageData: {x:400,y:800,width: 100,height:150},collisionData: {x:0,y:0,width:100,height:150},brightness:0.4,lightColor:"rgb(234,48,31)",lightRadius:200},
+                {id : "lamp", image:"cornball",imageData: {x:900,y:800,width: 100,height:150},collisionData: {x:0,y:0,width:100,height:150},brightness:0.3,lightColor:"rgb(255,255,255)",lightRadius:200,lightFlicker:true},
             ],
             Next: {
                 Right : "Woodrock_Southern_Entrance",
             },
         },
+        "waterTest" : {
+            Tilemap: [
+                [2,2,2,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1],
+                [2,2,2,0,1],
+                [2,2,2,0,1],
+            ],
+            Music : "second_sanct",
+            LightLevel:0.5,
+            Areas: [
+                {id : "guy", image: "man", imageData : {x:600, y:500,width:150, height:150},collisionData: {x:0,y:0,width:150,height:150}, interaction: {dialogue : "guy"}},
+                {id : "wom", image: "woman", imageData : {x:800, y:500,width:150, height:150},collisionData: {x:0,y:0,width:130,height:150}, interaction: {dialogue : "textTester"}},
+            ],
+            Next: {
+                Left:"Woodrock_Southern_Entrance",
+            },
+        }
     },
 
 
     update(deltaTime) {//we are updating player position within the world and telling the player what they can interact with
-        const mapSize = (world.locations[location].Tilemap.length) * TILE_SIZE;
+        playMusic(world.locations[location].Music,{fadeSeconds:2,loop:true});
+
+
+
+        const mapWidth = (world.locations[location].Tilemap[0].length) * TILE_SIZE;  // columns
+        const mapHeight = (world.locations[location].Tilemap.length) * TILE_SIZE;    // rows
         let locationExited = "null";
-        if (playerController.centerX > mapSize) {
+        if (playerController.centerX > mapWidth) {
             locationExited = "Right";
         } else if (playerController.centerX < 0) {
             locationExited = "Left";
+            console.log("left")
         } else if (playerController.centerY < 0) {
             locationExited = "Up";
-        } else if (playerController.centerY > mapSize) {
+        } else if (playerController.centerY > mapHeight) {
             locationExited = "Down";
+            console.log("down")
         }
 
         if (locationExited !== "null" && world.locations?.[world.locations[location].Next[locationExited]]) {
@@ -177,6 +207,13 @@ export let world = {
     },
 
     draw() {//we will get what to draw from the update function
+
+        let currentLightsources = [];
+
+
+        const mapWidth = (world.locations[location].Tilemap[0].length) * TILE_SIZE;  // columns
+        const mapHeight = (world.locations[location].Tilemap.length) * TILE_SIZE;    // rows
+
         let map = autoTiler(world.locations[location].Tilemap , location);
         camera.update(playerController,map,TILE_SIZE);
 
@@ -184,8 +221,8 @@ export let world = {
         const startTileX = Math.max(0,Math.floor(camera.x / TILE_SIZE)); //floor it to ensure we get the precise start
         const startTileY = Math.max(0,Math.floor(camera.y / TILE_SIZE));
 
-        const endTileX = Math.min(map.length-1,Math.ceil((camera.x + camera.width) / TILE_SIZE)); //ceil it to ensure we get our ending, even if it is partially in view
-        const endTileY = Math.min(map[0].length-1,Math.ceil((camera.y + camera.height) / TILE_SIZE));
+        const endTileX = Math.min(map[0].length-1, Math.ceil((camera.x + camera.width) / TILE_SIZE));
+        const endTileY = Math.min(map.length-1, Math.ceil((camera.y + camera.height) / TILE_SIZE));
 
         for (let tileY = startTileY; tileY <= endTileY; tileY++) {
             for (let tileX = startTileX; tileX <= endTileX; tileX++) {
@@ -232,10 +269,25 @@ export let world = {
                     }
                 });
             }
+
+
+            // when building currentLightsources — separate radius from intensity now:
+            if (area?.brightness) {
+                currentLightsources.push({
+                    x: (area.imageData.x + area.imageData.width/2) - camera.x,
+                    y: area.imageData.y+ area.imageData.height/2 - camera.y,
+                    radius: area.lightRadius ?? 150,       // no longer scaled by brightness
+                    intensity: Math.min(area.brightness, 1), // 0–1, drives how strong the effect actually is
+                    color: area.lightColor ?? "rgb(255,255,255)",
+                    flicker: area.lightFlicker
+                });
+            }
         }
         //do entity sorting here
 
-        let playerColliderPos = getWorldColliderPosition(playerController.x ,playerController.y ,playerController.collisionData.x ,playerController.collisionData.y ,playerController.collisionData.width ,playerController.collisionData.height )
+        let playerColliderPos = getWorldColliderPosition(playerController.x ,playerController.y ,playerController.collisionData.x ,playerController.collisionData.y ,playerController.collisionData.width ,playerController.collisionData.height );
+
+        //THIS CHECKS FOR PLAYER COLLISION
         for (let obj of collidableObjects) {
             if (intersects(playerColliderPos , obj.collisionData ) ){
                 const overlapX = Math.min(playerColliderPos.x + playerColliderPos.width, obj.collisionData.x + obj.collisionData.width) - Math.max(playerColliderPos.x,obj.collisionData.x);
@@ -250,8 +302,12 @@ export let world = {
                     else {playerController.y += overlapY}
                     playerController.velocity.y = 0;
                 }
-
             }
+            //check x and y bounds of the map, bound the player to those if there aren't any TPs there
+            if (playerController.centerY < 0) {playerController.y = -(playerController.height/2);}
+            if (playerController.centerY > mapHeight) {playerController.y = mapHeight - (playerController.height/2);}
+            if (playerController.centerX > mapWidth) {playerController.x = mapWidth - (playerController.width/2);}
+            if (playerController.centerX < 0 ) {playerController.x = -playerController.width/2;}
         }
 
         //checking for player interactions
@@ -278,7 +334,6 @@ export let world = {
             const dx_b = (b.worldCollision.x + b.worldCollision.width / 2) - playerController.centerX;
             const dy_b = (b.worldCollision.y + b.worldCollision.height / 2) - playerController.centerY;
             return (dx_a * dx_a + dy_a * dy_a) - (dx_b * dx_b + dy_b * dy_b);
-            // no Math.sqrt needed — we're just comparing, not displaying the distance
         });
 
         if (intersectingObjects.length > 0) {
@@ -341,16 +396,31 @@ export let world = {
 
         renderQueue.sort((a, b) => a.depth - b.depth);
 
+        currentLightsources.push({x:playerController.x+(playerController.width/2)-camera.x,y: playerController.y+(playerController.height/2)-camera.y,radius:100,color:"rgb(255,0,0)",intensity:1});
+
         for (const item of renderQueue) {item.draw()}//where stuff actually gets drawn
 
         //If lighting engine is done: Draw lighting and shadow layers
         //Draw High level foliage
+        const ambientDarkness = 1 - (this.locations[location].LightLevel ?? 1);
+        // LightLevel 1 = fully lit (no darkness overlay), 0 = pitch black ambient.
+        let lighting = renderedShapes["worldLighting"] ?? newLightingLayer("worldLighting", ambientDarkness);
+        lighting.AmbientDarkness = ambientDarkness; // update in case LightLevel differs between areas
+        lighting.Lights = currentLightsources;
+        lighting.draw();
+
 
         //Draw UI
+        if (this.locations[location]?.Tint) {
+            // newAreaTint("tint","rgb(31,89,234)",0.8).draw();
+            newAreaTint("tint",this.locations[location].Tint.color,this.locations[location].Tint.opacity).draw();
+        }
+
+
     }
 }
 
 let size =100;
-for (let i = 0; i<150; i++){
+for (let i = 0; i<500; i++){
     world.locations[location].Areas.push({id : "tree"+i, image:"tree2",imageData : {x:(Math.random()*1600) - (size/2),y:(Math.random()*1600) - (size/2),width:size,height:size},color:[1,2,3]});
 }
