@@ -64,7 +64,7 @@ function draw(dt) {
     // } else {
     //     // console.log("idk where your image went")
     // }
-    let fps = newText("fps_counter",800,120,"rgb(255,255,255)","60px Monospace","FPS: "+ Math.ceil(1/dt) );
+    let fps = newText("fps_counter",0,0,"rgb(255,255,255)","60px Monospace","FPS: "+ Math.ceil(1/dt) );
     fps.draw()
 }
 
@@ -110,22 +110,28 @@ function loop() {//MAIN GAME HAPPENS HERE
     requestAnimationFrame(loop);
 }
 
-let allAssets = Object.keys(assets.images).length + Object.keys(assets.music).length;
+let allAssets = Object.keys(assets.images).length + Object.keys(assets.music).length +Object.keys(assets.sounds).length ;
 
 console.log(allAssets);
 
 for (let img in assets.images) { //wait for the game assets to initialize
-    console.log(img);
+    // console.log(img);
     loadAsset("images",assets.images[img], img).then(() => {
         if (assetCount === allAssets) {loop()}
     })
 }
 
 for (let mus in assets.music) {
-    console.log(mus);
+    // console.log(mus);
     loadAsset("music",assets.music[mus], mus).then(()=>{
         if (assetCount === allAssets) {loop()}
     });
 }
 
+for (let snd in assets.sounds) {
+    // console.log(snd);
+    loadAsset("sounds",assets.sounds[snd], snd).then(()=>{
+        if (assetCount === allAssets) {loop()}
+    });
+}
 console.log("we took "+(Date.now() - startTime)+" ms to initialize");
