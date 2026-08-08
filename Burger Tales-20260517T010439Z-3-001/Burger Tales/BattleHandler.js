@@ -1,13 +1,23 @@
 //this script handles ALL THINGS battle related
 
 import { actionDirectory, dodgeHandler, AnimationManager,playerActionDirectory } from "./actionDirectory.js";
-import { allyDirectory } from "./AllyDirectory.js";
-import { availableAssets } from "./AssetLoader.js";
-import { gameState, changeGameState } from "./main.js";
+import {allyDirectory, healthBarColor} from "./AllyDirectory.js";
+import {availableAssets, playMusic} from "./AssetLoader.js";
+import {gameState, changeGameState} from "./main.js";
 import  {enemyDirectory} from "./enemyDirectory.js";
 // import { signal } from "./SignalService.js";
 import {world } from "./WorldHandler.js";
-import {newImage, newRect, newText, randInt} from "./Utility.js";
+import {clamp} from "./Utility.js"
+import {
+    newImage,
+    newRect,
+    newText,
+    randInt,
+    damageCounter,
+    newRotatedRect,
+    newTargetHighlight,
+    newFilledText
+} from "./Utility.js";
 import {keys, keybinds, keyPresses} from "./KeyboardInputHandler.js";
 import {playerController, playerInventory} from "./PlayerController.js";
 import {itemDirectory} from "./ItemDirectory.js";
@@ -156,6 +166,8 @@ class entity{
     }
 }
 
+
+
 export const battleStates = {//ENUM EQUIVALENT
     INACTIVE: "INACTIVE",
 
@@ -204,7 +216,14 @@ export let battlefield = {
     },
 
     damage(target,amount){
+        let damage = (amount - target.defense.current)
+        if (damage < 0) {damage = clamp(0,amount,damage);}
+        target.health.current-=  damage;
+        //labelCreator
+        new damageCounter(damage,target.worldData.x + (target.worldData.width/2),target.worldData.y + (target.worldData.height/2));
 
+        // new damageCounter(amount,target.worldData.x + (target.worldData.width/2),target.worldData.y + (target.worldData.height/2),"rgb("+randInt(1,255)+","+randInt(1,255)+","+randInt(1,255)+",");
+        // console.log("did "+amount+" damage to "+target.name);
     },
 
     debuff(target,amount){
@@ -226,6 +245,8 @@ export let battlefield = {
             this.turnOrder.push({name:this.enemies[e].name, index: e,spd:this.enemies[e].speed.current, side:"enemies"});
         }
 
+        //also precompute enemy logic blocks i guess
+
         this.turnOrder.sort((a, b) => b.spd - a.spd);
         console.log("turns created!");
     },
@@ -237,6 +258,9 @@ export let battlefield = {
             this.cycle++;
             this.turn = 1;
             newCycle = true;
+            console.log("new cycle!!!");
+            setState(battleStates.PLAYER_SELECTION);
+            return;
             //we are reconstructing the turn order every new CYCLE btw
         }
 
@@ -308,6 +332,7 @@ let battleUI = {//this purely handles ui which is drawn over everything,
         }
         if (!this.state.inputDebounce) {
             if (keyPresses[keybinds.Interact]) {
+                availableAssets.sounds.confirm.play();
                 //TOP HIERARCHY; MAIN MENU
                 if (this.state.allyIndex <= battlefield.allies.length - 1) {
                     this.state.inputDebounce = true;
@@ -356,18 +381,22 @@ let battleUI = {//this purely handles ui which is drawn over everything,
                         //MOVE UP THE ALLY INDEX AND RESET MENU STACK TO THE DEFAULT!
                         if (this.state.allyIndex + 1 <= battlefield.allies.length-1) {this.state.allyIndex++;} else {
                             setState(battleStates.CREATE_TURN_ORDER);
+                            this.state.allyIndex=0;
                             this.state.action = "idle"
                         }
                         this.state.menuStack = [{name:"main", maxIndex:3, curIndex:0}];
                     }
                 }
             } else if (keyPresses[keybinds.MenuNavigationLeft]) {
+                availableAssets.sounds.navigate.play();
                 this.state.inputDebounce = true;
                 if (this.state.menuStack[this.state.menuStack.length - 1].curIndex - 1 >= 0) {this.state.menuStack[this.state.menuStack.length - 1].curIndex--;if (curMenu.name === "main") moveHighlightTo(getMainMenuRect(curMenu.curIndex));}
             } else if (keyPresses[keybinds.MenuNavigationRight]) {
+                availableAssets.sounds.navigate.play();
                 this.state.inputDebounce = true;
                 if (this.state.menuStack[this.state.menuStack.length - 1].curIndex  < this.state.menuStack[this.state.menuStack.length - 1].maxIndex-1) {this.state.menuStack[this.state.menuStack.length - 1].curIndex++;if (curMenu.name === "main") moveHighlightTo(getMainMenuRect(curMenu.curIndex));}
             } else if (keyPresses[keybinds.MenuBack]) {
+                availableAssets.sounds.back.play();
                 this.state.inputDebounce = true;
                 //return to parent block, but if null, do nothing
                 if (this.state.allyIndex > 0 && this.state.menuStack.length ===1) {
@@ -390,7 +419,7 @@ let battleUI = {//this purely handles ui which is drawn over everything,
         if (this.state.action === "player") {
             let currentAlly = battlefield.allies[this.state.allyIndex];
 
-            //TEMPORARY; WILL GET DRAWN OUT WITH PROPER DATA LATER
+
 
             if (currentMenuName === "main") {
                 let curMenu = this.state.menuStack[this.state.menuStack.length-1];
@@ -406,17 +435,6 @@ let battleUI = {//this purely handles ui which is drawn over everything,
                     let label = newText("mainMenuLabel"+i, rect.x + 10, currentAlly.worldData.y + 85, "rgb(0,255,255)", "16px Arial", mainUIIndexes[i]);
                     label.draw();
                 }
-                // let OffensiveActionBlock = newRect("player_offensive",currentAlly.worldData.x + 75,currentAlly.worldData.y+50,50,50,"rgb(255,255,255)");
-                // OffensiveActionBlock.draw();
-                // let tt = newText("jw",currentAlly.worldData.x + 75,currentAlly.worldData.y + 50 + 16,"rgb(0,0,0)","16px Arial",mainUIIndexes[this.state.menuStack[this.state.menuStack.length-1].curIndex]);
-                // tt.draw();
-                //
-                // let tct = newText("jfw",currentAlly.worldData.x,currentAlly.worldData.y,"rgb(255,255,255)","16px Arial",currentAlly.name);
-                // tct.draw();
-
-
-                // let offensiveBlock = newText("player_offensive_menu",100,200,"rgb(255,255,255)","16px Arial","AAAAAAAAAAAAAAAAAA");
-                // offensiveBlock.draw();
 
                 //TWEEN THE ABOVE TO MOVE TOWARD THE POSITION FROM A STARTING POINT
 
@@ -428,15 +446,9 @@ let battleUI = {//this purely handles ui which is drawn over everything,
             } else if (currentMenuName === "target") {
                 let tt = newText("jw",currentAlly.worldData.x + 150,currentAlly.worldData.y + 50 + 16,"rgb(255,255,255)","16px Arial","yo target someone twin");
                 tt.draw();
+                let targetPos = battlefield[this.state.targetType][this.state.menuStack[this.state.menuStack.length-1].curIndex].worldData;
+                newTargetHighlight("th",targetPos.x, targetPos.y, 150, 150,2).draw();
 
-                //also draw a box around the person being targeted (TWEEN IT TWIN)
-                let newBox = newRect("entityHighlight",
-                    battlefield[this.state.targetType][this.state.menuStack[this.state.menuStack.length-1].curIndex].worldData.x - 15,
-                    battlefield[this.state.targetType][this.state.menuStack[this.state.menuStack.length-1].curIndex].worldData.y - 15,
-                    150 + 30,
-                    150 + 30,
-                    "rgb(255,255,255,0.5)");
-                newBox.draw();
             }
         }
 
@@ -453,33 +465,15 @@ let battleUI = {//this purely handles ui which is drawn over everything,
 export function setState(newState) {
     battlefield.state = newState;
     console.log(battlefield.state);
-
-    // switch(newState) {
-    //     case battleStates.CREATE_TURN_ORDER:
-    //         battlefield.createTurns();
-    //         break;
-    //     case battleStates.TURN_WAITING:
-    //         battlefield.grantTurn();
-    //         break;
-    //     case battleStates.BATTLE_END:
-    //         // cleanup
-    //         break;
-    // }
 }
 
 export let battle = {
-    currentSong : "",//FILE PATH NAME, NOT MP3
 
     //initializes the whole field and updates game state + screen state
     start( enemyData ,area, backgroundData) {
         //area determines battle music unless enemy overrides it, it also determines bg
         let worldArea = world.locations[area];
-        //checks what music to use
-        if (this.currentSong !== worldArea.battleMusic || this.currentSong === "") {
-            if (this.currentSong !== "") {availableAssets.music[this.currentSong].stop();}
-            this.currentSong = worldArea.battleMusic;
-        }
-        availableAssets.music[this.currentSong].play();
+        playMusic(worldArea.battleMusic,{volume:0.1});
 
         //load all allies
         for (let allyIndex=0; allyIndex < playerTeam.length;allyIndex++) {
@@ -501,15 +495,12 @@ export let battle = {
             }
         }
 
-
         changeGameState("Battle");
     },
 
     update(deltaTime){
         if (battlefield.state === battleStates.INACTIVE) {return;}
-        if (dodgeHandler.active) {
-            dodgeHandler.update(deltaTime);
-        }
+        dodgeHandler.update(deltaTime)
         AnimationManager.update(deltaTime);
         battleUI.update(deltaTime);
 
@@ -527,6 +518,7 @@ export let battle = {
             attackMinigames.updateCurrentMinigames(deltaTime);
             //We do not need to do this for enemies since Animation manager technically handles their choreographs
         }
+        damageCounter.update(deltaTime);
         //check battle state and fire one-time functions then, otherwise, TURN_WAITING should do nothing
     },
 
@@ -543,9 +535,7 @@ export let battle = {
             } else {
                 ctx.drawImage(availableAssets.images[bgE.image],bgE.x,bgE.y,bgE.width,bgE.height);
             }
-
         }
-
 
         for (let ally in battlefield.allies) {
             ctx.drawImage(availableAssets.images[battlefield.allies[ally].image],
@@ -566,9 +556,27 @@ export let battle = {
             );
         }
 
+        //data bars
+        for (let ei =0; ei < battlefield.enemies.length; ei++) {
+            let enemy = battlefield.enemies[ei];
+            newRect("enemyHPBAr_"+ei,enemy.worldData.x-5,enemy.worldData.y+(enemy.worldData.height) +10,150+10,20,"rgb(0,0,0)").draw();
+            newRect("enemyHPBAr_"+ei,enemy.worldData.x,enemy.worldData.y+(enemy.worldData.height) + 15,150,10,"rgb(217,58,58)").draw();
+            newRect("enemyHPBAr_"+ei,enemy.worldData.x,enemy.worldData.y+(enemy.worldData.height) + 15,clamp(0,150,150 * (enemy.health.current/enemy.health.max)),10,"rgb(47,239,101)").draw();
+        }
+
+        //player bars (only show energy when it's the player's turn)
+        for (let ai=0;ai<battlefield.allies.length; ai++) {
+            let ally = battlefield.allies[ai];
+            newRect("allyHPBAr_"+ai,ally.worldData.x-5,ally.worldData.y+(ally.worldData.height) +10,150+10,30,"rgb(0,0,0)").draw();
+            // newRect("allyHPBAr_"+ai,ally.worldData.x,ally.worldData.y+(ally.worldData.height) + 15,150,10,"rgb(217,58,58)").draw();
+            newRect("allyHPBar_"+ai,ally.worldData.x,ally.worldData.y+ally.worldData.height+15,150* (ally.health.current/ally.health.max),20,healthBarColor[ally.name]).draw()
+            newFilledText("allyHPText_"+ai,ally.worldData.x,ally.worldData.y+ally.worldData.height+15,"rgb(255,255,255)","20px Courier New",ally.health.current+"/"+ally.health.max).draw();
+        }
+
         //DRAW UI ON TOP
         attackMinigames.existingMinigames[0]?.draw();
         battleUI.draw();
+        damageCounter.draw();
     }
 
 }
