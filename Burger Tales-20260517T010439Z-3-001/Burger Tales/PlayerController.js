@@ -1,14 +1,14 @@
 //THIS IS THE PLAYER CONTROLLER FOR THE WORLD, DOES NOT APPLY FOR MENUS OR THE BATTLE STATE; FIND THE ACCORDING SCRIPT
 
-import { keys, keybinds } from './KeyboardInputHandler.js';
+import { keys, keybinds, keyPresses } from './KeyboardInputHandler.js';
 import {LERP} from "./Utility.js";
 const canvas = document.getElementById('canvas');
 import {dialogue as battleHandler, dialogue as dialogueHandler} from "./dialogueClass.js"
 import { battle } from "./BattleHandler.js";
-import {world} from "./WorldHandler.js"
+import {world,location} from "./WorldHandler.js"
 
 export let playerController = {//this handles the player within the world and moving them with the desired keybinds
-    image : "sadFace",
+    image : "cobalt",
     Direction : "forward",
     x:100,
     y:100,
@@ -53,8 +53,8 @@ export let playerController = {//this handles the player within the world and mo
 
 
 
-        if (keys[keybinds.Interact] && !this.debounce) {
-            this.debounce = true;
+        if (keyPresses[keybinds.Interact] && !this.debounce) {
+            // this.debounce = true;
 
             if (this.state === "dialogue") {
                 dialogueHandler.handlePlayerInput();
@@ -66,7 +66,8 @@ export let playerController = {//this handles the player within the world and mo
                         break;
                     case "battle":
                         this.state = "battle";
-                        battle.start(playerController.interaction.Data, world.currentLocation);
+                        console.log(playerController.interaction.Data);
+                        battle.start(playerController.interaction.Data.enemies, world.currentLocation,playerController.interaction.Data.backgroundData);
                         break;
                     default:
                         break;
@@ -106,7 +107,7 @@ export let camera = {
     y:0,
     width : canvas.width, //USE FOR BOUNDS OPERATIONS
     height : canvas.height,
-    followSpeed:0.06,
+    followSpeed:0.1,
     shaking:false,
 
     update : function(player,map,tile_size) {
@@ -136,6 +137,20 @@ export let camera = {
         }
     }
 }
+
+export let playerInventory = [
+    "sugar_apple",
+    "sugar_apple",
+    "cornball",
+    "sugar_apple",
+    "sugar_apple",
+    "cornball",
+    "sugar_apple",
+    "sugar_apple",
+    "cornball",
+    "ketchup",
+
+];//SHOULD BE A LIST OF REFERENCES TOWARDS ITEMS IN THE ITEM DIRECTORY
 
 export let playerSettings= {
     music_volume : 1,
