@@ -14,11 +14,11 @@ export const assets = {
         ketchup : "Assets/images/Ketchup.png",
         angry_man:"Assets/images/angryMan.png",
         aura_man:"Assets/images/aura_man.png",
-        banana: "Assets/images/banana (1).png",
+        banana: "Assets/images/banana.png",
         fish: "Assets/images/fish.png",
-        silhouette_man:"Assets/images/Man_Silhouette (1).png",
+        silhouette_man:"Assets/images/manSilhouette.png",
         rotisserie_chicken: "Assets/images/Rotisserie_Chicken.png",
-        sugar_apple: "Assets/images/sugar_apple (1).png",
+        sugar_apple: "Assets/images/sugar_apple.png",
         tungsten_cube: "Assets/images/tungsten.png",
         woman: "Assets/images/woman.png",
         woman2: "Assets/images/woman2.png",
@@ -27,6 +27,12 @@ export const assets = {
         flurrine: "Assets/images/water_spirit.png",
         sky: "Assets/images/bg_1.jpg",
         cornball: "Assets/images/cornball.jpeg",
+        sword:"Assets/images/sword.png",
+        staff:"Assets/images/staff.png",
+        window: "Assets/images/empty_window.png",
+        lampPost: "Assets/images/lampPost.png",
+        dog: "Assets/images/dog.png",
+        man2: "Assets/images/man2.png",
     },
     music : { //WE CAN ONLY ACCEPT MP3s
         //please note all of the music right now is temporary and should be removed later
@@ -35,6 +41,8 @@ export const assets = {
         black_knife:"Assets/music/black_knife.mp3",
         dark_sanct:"Assets/music/Dark Sanctuary.mp3",
         second_sanct:"Assets/music/Second_Sanctuary.mp3",
+        rude_buster:"Assets/music/Rude Buster.mp3",
+        SPAWN:"Assets/music/SPAWN.mp3",
 
     },
     sounds: {
@@ -57,6 +65,17 @@ export const assets = {
         back:"Assets/sounds/back.mp3",
         confirm:"Assets/sounds/click_confirm.mp3",
         navigate:"Assets/sounds/navigate.mp3",
+        OO_Click: "Assets/sounds/OO_Click.mp3",
+        navigation:"Assets/sounds/naviagation.wav",
+        shotgun_shoot:"Assets/sounds/shotgun-fire.wav",
+        heal: "Assets/sounds/heal-sfx.wav",
+        air_swing:"Assets/sounds/air_swing.wav",
+        perfect_guard:"Assets/sounds/perfect_guard.wav",
+        parry:"Assets/sounds/parry.wav",
+        light_fire:"Assets/sounds/light fire magic.wav",
+        NFL_Intro:"Assets/sounds/NFL_Intro_short.mp3",
+        nutella:"Assets/sounds/nutella.mp3",
+        mrbeast_cringe:"Assets/sounds/MrBeastAutotuneCringe.mp3",
     }
 };
 
