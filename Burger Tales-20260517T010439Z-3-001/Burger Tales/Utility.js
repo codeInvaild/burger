@@ -1,4 +1,4 @@
-import {battlefield} from "./BattleHandler.js";
+import {battleCamera, battlefield} from "./BattleHandler.js";
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -18,7 +18,9 @@ export function clamp(min, max,value) {
     return Math.max(min,Math.min(value,max));
 }
 
-
+export let cameraBehavior = {
+    curCam : "none"
+}
 
 export function normalizeVector(vector) {
     const length = Math.sqrt(vector.x * vector.x + vector.y * vector.y);
@@ -39,8 +41,19 @@ export function intersects(a, b) {
     );
 }
 
-export function newRect(id,x,y,width,height,color,outline=false,lineWidth=3) {
+export function newRect(id,x,y,width,height,color,outline=false,lineWidth=3,ignoreCamera=false) {
     renderedShapes[id] = {X:x,Y:y,Width:width,Height:height,Color:color,Outline:outline,LineWidth:lineWidth, draw: function (){
+
+        if (!ignoreCamera) {
+            //find what cam, battle or world
+            if (cameraBehavior.curCam === "battle") {
+                renderedShapes[id].X = (renderedShapes[id].X-  battleCamera.x) * battleCamera.zoom;
+                renderedShapes[id].Y = (renderedShapes[id].Y-  battleCamera.y) * battleCamera.zoom;
+                renderedShapes[id].Width = renderedShapes[id].Width * battleCamera.zoom;
+                renderedShapes[id].Height = renderedShapes[id].Height * battleCamera.zoom;
+            }
+        }
+
         if (outline) {
             ctx.strokeStyle = renderedShapes[id].Color;
             ctx.lineWidth = renderedShapes[id].LineWidth;
@@ -53,25 +66,61 @@ export function newRect(id,x,y,width,height,color,outline=false,lineWidth=3) {
     return renderedShapes[id];
 }
 
-export function drawCircle(ctx, x, y, radius, options = {}) {
-    const {
-        fill = null,
-        stroke = null,
-        lineWidth = 1,
-    } = options;
+export function newCircle(id, x, y, radius, color, outline = false, lineWidth = 3,ignoreCamera=false) {
+    renderedShapes[id] = {X: x, Y: y, Radius: radius, Color: color, Outline: outline, LineWidth: lineWidth, draw: function () {
+            if (!ignoreCamera) {
+                //find what cam, battle or world
+                if (cameraBehavior.curCam === "battle") {
+                    renderedShapes[id].X = (renderedShapes[id].X-  battleCamera.x) * battleCamera.zoom;
+                    renderedShapes[id].Y = (renderedShapes[id].Y-  battleCamera.y) * battleCamera.zoom;
+                    renderedShapes[id].Width = renderedShapes[id].Width * battleCamera.zoom;
+                    renderedShapes[id].Height = renderedShapes[id].Height * battleCamera.zoom;
+                }
+            }
 
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.beginPath();
+            ctx.arc(renderedShapes[id].X, renderedShapes[id].Y, renderedShapes[id].Radius, 0, Math.PI * 2);
 
-    if (fill) {
-        ctx.fillStyle = fill;
-        ctx.fill();
-    }
-    if (stroke) {
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = lineWidth;
-        ctx.stroke();
-    }
+            if (renderedShapes[id].Outline) {
+                ctx.strokeStyle = renderedShapes[id].Color;
+                ctx.lineWidth = renderedShapes[id].LineWidth;
+                ctx.stroke();
+            } else {
+                ctx.fillStyle = renderedShapes[id].Color;
+                ctx.fill();
+            }
+        }};
+    return renderedShapes[id];
+}
+
+export function newCircleBar(id, x, y, radius, getPercent, color = "lime", backgroundColor = "rgba(255,255,255,0.15)", lineWidth = 8, rounded = false, clockwise = true) {
+    renderedShapes[id] = {X: x, Y: y, Radius: radius, GetPercent: getPercent, Color: color, BackgroundColor: backgroundColor, LineWidth: lineWidth, Rounded: rounded, Clockwise: clockwise, draw: function () {
+            const s = renderedShapes[id];
+            const startAngle = -Math.PI / 2; // 12 o'clock start
+            const clampedPercent = getPercent;
+            const endAngle = s.Clockwise
+                ? startAngle + (Math.PI * 2 * clampedPercent)
+                : startAngle - (Math.PI * 2 * clampedPercent);
+
+            // background track
+            ctx.beginPath();
+            ctx.arc(s.X, s.Y, s.Radius, 0, Math.PI * 2);
+            ctx.strokeStyle = s.BackgroundColor;
+            ctx.lineWidth = s.LineWidth;
+            ctx.lineCap = "butt";
+            ctx.stroke();
+
+            // filled progress arc
+            if (clampedPercent > 0) {
+                ctx.beginPath();
+                ctx.arc(s.X, s.Y, s.Radius, startAngle, endAngle, !s.Clockwise);
+                ctx.strokeStyle = s.Color;
+                ctx.lineWidth = s.LineWidth;
+                ctx.lineCap = s.Rounded ? "round" : "butt";
+                ctx.stroke();
+            }
+        }};
+    return renderedShapes[id];
 }
 
 export function newTargetHighlight(id, x, y, width, height, pulseSpeed = 3) {
@@ -181,16 +230,16 @@ function getFlickerMultiplier(seed, time, speed = 8, intensity = 0.15) {
 
 export function newLightingLayer(id, ambientDarkness = 0.85, options = {}) {
     const {
-        maxDarkness = 1,       // cap so it's never fully pitch black
-        darknessColor = "0,0,10", // slightly blue-black instead of pure black — reads better
+        maxDarkness = 1,
+        darknessColor = "0,0,10",
     } = options;
 
     renderedShapes[id] = {
         AmbientDarkness: ambientDarkness,
         MaxDarkness: maxDarkness,
         DarknessColor: darknessColor,
-        Lights: [],        // { x, y, radius, color } — subtractive, punches through darkness
-        AdditiveLights: [],// { x, y, radius, color } — additive, brightens even lit areas
+        Lights: [],        // { x, y, radius, color } — subtractive, punches through darkness (hole punched)
+        AdditiveLights: [],// { x, y, radius, color } — additive, brightens even lit areas (radial ring added on top)
         draw: function () {
             const s = renderedShapes[id];
             lightCtx.clearRect(0, 0, lightCanvas.width, lightCanvas.height);
@@ -212,7 +261,6 @@ export function newLightingLayer(id, ambientDarkness = 0.85, options = {}) {
                 lightCtx.fillStyle = `rgba(${s.DarknessColor},${clampedDarkness})`;
                 lightCtx.fillRect(0, 0, lightCanvas.width, lightCanvas.height);
 
-                // punch: pushed much closer to full strength, so the "reveal" is the dominant visual effect
                 lightCtx.globalCompositeOperation = "destination-out";
                 for (const light of s.Lights) {
                     const { radius: drawRadius, alpha: flickerAlpha } = getFlickerValues(light);
@@ -229,7 +277,7 @@ export function newLightingLayer(id, ambientDarkness = 0.85, options = {}) {
                 ctx.restore();
             }
 
-// tint: small and subtle — a warm/cool cast concentrated near the source, not a wash over the whole reveal
+
             ctx.save();
             ctx.globalCompositeOperation = "lighter";
             for (const light of [...s.Lights, ...s.AdditiveLights]) {
@@ -253,26 +301,55 @@ export function newLightingLayer(id, ambientDarkness = 0.85, options = {}) {
 }
 
 
-export function newRotatedRect(id,x,y,width,height,color,rotation) {
+export function newRotatedRect(id,x,y,width,height,color,rotation,ignoreCamera=false) {
     renderedShapes[id] = {X:x,Y:y,Width:width,Height:height,Rotation:rotation,Color:color,draw:function(){
+            if (!ignoreCamera) {
+                //find what cam, battle or world
+                if (cameraBehavior.curCam === "battle") {
+                    renderedShapes[id].X = (renderedShapes[id].X-  battleCamera.x) * battleCamera.zoom;
+                    renderedShapes[id].Y = (renderedShapes[id].Y-  battleCamera.y) * battleCamera.zoom;
+                    renderedShapes[id].Width = renderedShapes[id].Width * battleCamera.zoom;
+                    renderedShapes[id].Height = renderedShapes[id].Height * battleCamera.zoom;
+                }
+            }
+
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(rotation);
+        ctx.fillStyle = renderedShapes[id].Color;
         ctx.fillRect(-width / 2, -height / 2, width, height);
         ctx.restore();
     }};
     return renderedShapes[id];
 }
 
-export function newImage(id,x,y,width,height,image) {
+export function newImage(id,x,y,width,height,image,ignoreCamera=false) {
     renderedShapes[id] = {X:x,Y:y,Width:width,Height:height, draw: function (){
-        ctx.drawImage(image,x,y,width,height,image);
+            if (!ignoreCamera) {
+                //find what cam, battle or world
+                if (cameraBehavior.curCam === "battle") {
+                    renderedShapes[id].X = (renderedShapes[id].X-  battleCamera.x) * battleCamera.zoom;
+                    renderedShapes[id].Y = (renderedShapes[id].Y-  battleCamera.y) * battleCamera.zoom;
+                    renderedShapes[id].Width = renderedShapes[id].Width * battleCamera.zoom;
+                    renderedShapes[id].Height = renderedShapes[id].Height * battleCamera.zoom;
+                }
+            }
+            ctx.drawImage(image,renderedShapes[id].X,renderedShapes[id].Y,renderedShapes[id].Width,renderedShapes[id].Height);
     }};
     return renderedShapes[id];
 }
 
-export function newText(id,x,y,color="rgb(255,255,255)",font = "16px Arial",text = "hello!") {
+export function newText(id,x,y,color="rgb(255,255,255)",font = "16px Arial",text = "hello!",ignoreCamera=false) {
     renderedShapes[id] = {X:x,Y:y,Color:color,Font : font, Text : text, draw : function(){
+            if (!ignoreCamera) {
+                //find what cam, battle or world
+                if (cameraBehavior.curCam === "battle") {
+                    renderedShapes[id].X = (renderedShapes[id].X-  battleCamera.x) * battleCamera.zoom;
+                    renderedShapes[id].Y = (renderedShapes[id].Y-  battleCamera.y) * battleCamera.zoom;
+                    renderedShapes[id].Width = renderedShapes[id].Width * battleCamera.zoom;
+                    renderedShapes[id].Height = renderedShapes[id].Height * battleCamera.zoom;
+                }
+            }
             ctx.font = renderedShapes[id].Font;
             ctx.lineWidth = 8;
             // ctx.strokeStyle = "black";
@@ -283,13 +360,60 @@ export function newText(id,x,y,color="rgb(255,255,255)",font = "16px Arial",text
     return renderedShapes[id];
 }
 
-export function newFilledText(id,x,y,color="rgb(255,255,255)",font = "16px Arial",text = "hello!") {
+function wrapText(ctx, text, maxWidth) {
+    const words = text.split(" ");
+    const lines = [];
+    let currentLine = "";
+
+    for (const word of words) {
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        const testWidth = ctx.measureText(testLine).width;
+
+        if (testWidth > maxWidth && currentLine) {
+            lines.push(currentLine);
+            currentLine = word;
+        } else {
+            currentLine = testLine;
+        }
+    }
+    if (currentLine) lines.push(currentLine);
+
+    return lines;
+}
+
+export function newWrappedText(id, x, y, maxWidth, color = "rgb(255,255,255)", font = "16px Arial", text = "hello!", lineHeight = 25, align = "left",ignoreCamera=false) {
+    renderedShapes[id] = {X: x, Y: y, MaxWidth: maxWidth, Color: color, Font: font, Text: text, LineHeight: lineHeight, Align: align, draw: function () {
+            const s = renderedShapes[id];
+            ctx.font = s.Font;
+            ctx.fillStyle = s.Color;
+            ctx.textAlign = s.Align;
+
+            const lines = wrapText(ctx, s.Text, s.MaxWidth);
+
+            lines.forEach((line, i) => {
+                ctx.fillText(line, s.X, s.Y + (i * s.LineHeight));
+            });
+        }};
+    return renderedShapes[id];
+}
+
+export function newFilledText(id,x,y,color="rgb(255,255,255)",font = "16px Arial",text = "hello!",ignoreCamera=false) {
     renderedShapes[id] = {X:x,Y:y,Color:color,Font : font, Text : text, draw : function(){
+            if (!ignoreCamera) {
+                //find what cam, battle or world
+                if (cameraBehavior.curCam === "battle") {
+                    renderedShapes[id].X = (renderedShapes[id].X-  battleCamera.x) * battleCamera.zoom;
+                    renderedShapes[id].Y = (renderedShapes[id].Y-  battleCamera.y) * battleCamera.zoom;
+                    renderedShapes[id].Width = renderedShapes[id].Width * battleCamera.zoom;
+                    renderedShapes[id].Height = renderedShapes[id].Height * battleCamera.zoom;
+                }
+            }
+
             ctx.font = renderedShapes[id].Font;
             ctx.lineWidth = 8;
             ctx.strokeStyle = "black";
             ctx.fillStyle = renderedShapes[id].Color;
-            ctx.strokeText(renderedShapes[id].Text, x, y);
+            ctx.strokeText(renderedShapes[id].Text, renderedShapes[id].X, renderedShapes[id].Y);
 
             ctx.fillText(renderedShapes[id].Text, renderedShapes[id].X, renderedShapes[id].Y);
         }}
@@ -408,8 +532,8 @@ export class damageCounter {
 
     constructor(amount,startX,startY,colorOverride ) {
         this.amount = amount;
-        this.startX = startX;
-        this.startY = startY;
+        this.startX = startX + (randInt(-10,10));
+        this.startY = startY + (randInt(-10,10));
         this.x = startX;
         this.y = startY;
         this.currentDegree = 0;
