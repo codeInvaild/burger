@@ -3,16 +3,30 @@ import {keys, keybinds, keyPresses, keyReleases} from "./KeyboardInputHandler.js
 import {
     allyXBuffer,
     battle,
+    battleCamera,
     battlefield,
-    battleStates,
+    battleStates, battleUI,
     enemyXBuffer,
     heightAddon,
     heightBuffer,
     setState
 } from "./BattleHandler.js";
-import {newText, newRect, randInt, shakeEffect, newRotatedRect,} from "./Utility.js";
+import {
+    newText,
+    newRect,
+    randInt,
+    shakeEffect,
+    newRotatedRect,
+    newCircle,
+    newCircleBar,
+    LERP,
+    newImage, damageCounter
+} from "./Utility.js";
 import {gameHeight,gameWidth} from "./main.js";
 import {availableAssets} from "./AssetLoader.js";
+import {playerInventory} from "./PlayerController.js";
+import {itemDirectory} from "./ItemDirectory.js";
+
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -78,10 +92,8 @@ let dodgeTypes = {
 }
 
 function findDodge(currentTime,endTime,customParameters) {
-    if (dodgeHandler.dodgesActive[0].dodged) {console.log("already dodged!");return null; }
+    if (dodgeHandler.dodgesActive[0].dodged) {return null; }
     let timeDifference = (endTime - currentTime) * 1000;//this is in MILLISECONDS, expect a high number in the thousands/hundreds
-
-    console.log(timeDifference);
 
     if (timeDifference > 0 && timeDifference <= (customParameters?.PERFECT_TIMING ? customParameters?.PERFECT_TIMING : dodgeTypes.PERFECT)) {
         return "PERFECT";
@@ -94,7 +106,6 @@ function findDodge(currentTime,endTime,customParameters) {
     } else if (timeDifference > (customParameters?.OKAY_TIMING ? customParameters?.OKAY_TIMING : dodgeTypes.OKAY) && timeDifference <= (customParameters?.MISS_TIMING ? customParameters?.MISS_TIMING : dodgeTypes.MISS)) {
         return "MISS";
     } else {
-        console.log("this time didn't fit into any category "+timeDifference);
         return "NO_REG";
     }
 }
@@ -112,11 +123,12 @@ export let dodgeHandler = {
     dodgesActive : [],
     localDelta : 0,
     active : false,
+    allyDodgeBuffer:0,//allies have a dodging cooldown based on their speed value
+    canDodge:true,
+    currentDodgeBuffer:0,//this dt counts UP towards the dodge buffer to update the canDodge value
 
     queueDodge(time,directions,target,damage,modifiers=null) {
         // if (!this.active) {this.active=true; this.localDelta=0;}
-        console.log("you just queued a dodge")
-        console.log("your target is: "+target?.name);
         this.dodgesActive.push({time : time,dodged : false , target: target,damage : damage, directions:directions,directionsPressed:{}, modifiers : modifiers}) ;
     },
 
@@ -133,31 +145,27 @@ export let dodgeHandler = {
         let curDodge = this.dodgesActive[0];
         let registerHit = true;
 
-        console.log("Handling dodge... "+dodge);
+
         switch (dodge) {
             case "PERFECT":
                 battlefield.damage(curDodge.target, customParams?.PERFECT_DMG_MULT ? customParams?.PERFECT_DMG_MULT : 0);
-                console.log("perfect: 0");
+                availableAssets.sounds.perfect_guard.play();
                 break;
 
                 case "GREAT":
                     battlefield.damage(curDodge.target, customParams?.GREAT_DMG_MULT ? customParams?.GREAT_DMG_MULT : Math.floor(curDodge.damage * 0.25));
-                    console.log("GREAT: "+Math.floor(curDodge.damage * 0.25));
                     break;
 
                     case "GOOD":
                         battlefield.damage(curDodge.target, customParams?.GOOD_DMG_MULT ? customParams?.GOOD_DMG_MULT : Math.floor(curDodge.damage * 0.5));
-                        console.log("GOOD: "+Math.floor(curDodge.damage * 0.5));
                         break;
 
                         case "OKAY":
                             battlefield.damage(curDodge.target, customParams?.OKAY_DMG_MULT ? customParams?.OKAY_DMG_MULT : Math.floor(curDodge.damage * 0.75));
-                            console.log("OKAY: "+Math.floor(curDodge.damage * 0.75));
                             break;
 
                             case "MISS":
                                 registerHit = false;
-                                console.log("you missed bruh");
                                 // battlefield.damage(curDodge.target, curDodge.damage);
                                 break;
         }
@@ -168,7 +176,6 @@ export let dodgeHandler = {
 
     update (dt) {
         if (this.dodgesActive.length === 0) {return;}
-        console.log(dt);
         this.localDelta += dt;
 
         //each needs to check for if it was the correct input or part of it (multi-hits), just compare with this.dodgesActive[0]'s direction array
@@ -177,7 +184,7 @@ export let dodgeHandler = {
             if (found) {
                 this.handleDodge("Up",this.localDelta,this.dodgesActive[0].time,this.dodgesActive[0]?.modifiers);
             } else {
-                availableAssets.sounds["OO_Miss"].play();
+                availableAssets.sounds["OO_Miss"].play({volume:1.5});
             }
         }
 
@@ -186,7 +193,7 @@ export let dodgeHandler = {
             if (found) {
                 this.handleDodge("Down",this.localDelta,this.dodgesActive[0].time,this.dodgesActive[0]?.modifiers);
             } else {
-                availableAssets.sounds["OO_Miss"].play();
+                availableAssets.sounds["OO_Miss"].play({volume:1.5});
             }
         }
 
@@ -195,7 +202,7 @@ export let dodgeHandler = {
             if (found) {
                 this.handleDodge("Left",this.localDelta,this.dodgesActive[0].time,this.dodgesActive[0]?.modifiers);
             } else {
-                availableAssets.sounds["OO_Miss"].play();
+                availableAssets.sounds["OO_Miss"].play({volume:1.5});
             }
         }
 
@@ -204,7 +211,7 @@ export let dodgeHandler = {
             if (found) {
                 this.handleDodge("Right",this.localDelta,this.dodgesActive[0].time,this.dodgesActive[0]?.modifiers);
             } else {
-                availableAssets.sounds["OO_Miss"].play();
+                availableAssets.sounds["OO_Miss"].play({volume:1.5});
             }
         }
 
@@ -212,6 +219,7 @@ export let dodgeHandler = {
         if (this.localDelta >= this.dodgesActive[0].time) {
             if (!this.dodgesActive[0].dodged) {//count as a missed dodge
                 battlefield.damage(this.dodgesActive[0].target, this.dodgesActive[0].damage);
+                availableAssets.sounds["OO_Miss"].play({volume:1.5});
             }
             let removedElement = this.dodgesActive.shift();
             this.localDelta = 0;
@@ -250,11 +258,19 @@ export let actionDirectory = {//THESE ARE USED FOR DODGING
     fight : {
         cost : 1,
         execute : function(self,target,targetSide){
-            availableAssets.sounds.getReady.play();
+            availableAssets.sounds.getReady.play({volume:2});
             dodgeHandler.target = target;
+            battlefield.take(self,this.cost,"energy");
+            tweenService.create(battleCamera,tweenService.TweenInfo(1,"SineOut"),{
+                x:(target.worldData.x+(target.worldData.width/2)) - (canvas.width/(1.15*2)) + 400,
+                y:(target.worldData.y+(target.worldData.height/2)) - (canvas.height/(1.15*2)),
+                zoom:1.1
+            }).play();
+            // tweenService.create(battleCamera,tweenService.TweenInfo(0.5,"SineOut"),{zoom:1.05}).play();
+            battleUI.battleBoxText = self.name + " warmed their hands up to attack "+target.name+"!";
             //the two lines of code below are an example of the BS you have to do, after one dodge, SUBTRACT from whatever time that was to get your next designated time
             dodgeHandler.queueDodge(2, {Right:directionTypes.right},target,self.attack.current);
-            dodgeHandler.queueDodge(3, {Right:directionTypes.right},target,self.attack.current);//I want it to happen at timeline.at = 5, so 5-2 = 3
+            dodgeHandler.queueDodge(3, {Right:directionTypes.right, Left:directionTypes.left},target,self.attack.current);//I want it to happen at timeline.at = 5, so 5-2 = 3
             let timeline = AnimationManager.create(6);
             timeline.at(1,() => {
                 tweenService.create(self.worldData, tweenService.TweenInfo(1,"SineOut"),{x:target.worldData.x + 75,y:target.worldData.y}).play();
@@ -271,6 +287,8 @@ export let actionDirectory = {//THESE ARE USED FOR DODGING
             timeline.at(6,()=>{
                 tweenService.create(self.worldData, tweenService.TweenInfo(0.5,"SineOut"),{x:enemyXBuffer,y: heightBuffer + (self.teamIndex * heightAddon) }).play();
                 setTimeout(nextTurn(),1500);
+                tweenService.create(battleCamera,tweenService.TweenInfo(0.5,"SineOut"),{x:0,y:0,zoom:1}).play();
+                battleCamera.follow(null);
             })
         },
         targetType : "enemies",
@@ -280,23 +298,49 @@ export let actionDirectory = {//THESE ARE USED FOR DODGING
 
 
 export let playerActionDirectory = {
+    //sword moves
     slash : {
         cost : 5,
         execute : function(self,target,targetSide){
-            console.log("successfully triggered")
-            console.log(self);
+            battlefield.take(self,this.cost,"energy");
+            tweenService.create(battleCamera,tweenService.TweenInfo(1,"SineOut"),{
+                x:(target.worldData.x+(target.worldData.width/2)) - (canvas.width/(1.15*2)),
+                y:(target.worldData.y+(target.worldData.height/2)) - (canvas.height/(1.15*2)),
+                zoom:1.15
+            }).play();
             tweenService.create(self.worldData,tweenService.TweenInfo(1,"SineOut"),{x:target.worldData.x - (self.worldData.width + 20), y:target.worldData.y}).play();
             setTimeout(function(){
                 let c = new attackMinigames("sword",{},self,target);
             },1000)
         },
         targetType : "enemies",
+        image:"sword",
+        description:"A regular slash to an enemy. Dealing 100% of your damage, though it only works if you can walk up to the target",
+        condition:"CQC",//conditions are special cases an attack must have in order to be used alongside ENERGY cost, this attack requires close quarters aa an example
     },
-    wack : {
+    powerSlash : {
+        cost : 15,
+        execute : function(self,target,targetSide){
+            battlefield.take(self,this.cost,"energy");
+            tweenService.create(self.worldData,tweenService.TweenInfo(1,"SineOut"),{x:target.worldData.x - (self.worldData.width + 20), y:target.worldData.y}).play();
+            setTimeout(function(){
+                let c = new attackMinigames("sword",{attackMult:2},self,target);
+            },1000)
+        },
+        targetType : "enemies",
+        image:"sword",
+        description:"A STRONGER slash to an enemy. Dealing 200% of your damage, though it only works if you can walk up to the target",
+        condition:"CQC",//conditions are special cases an attack must have in order to be used alongside ENERGY cost, this attack requires close quarters aa an example
+    },
+
+
+    //staff moves
+    blip : {
         cost : 5,
         execute : function(self,target,targetSide){
-            console.log("successfully triggered")
+            battlefield.take(self,this.cost,"energy");
             tweenService.create(self.worldData,tweenService.TweenInfo(0.5,"ElasticOut"),{x:self.worldData.x + 100}).play();
+
             setTimeout(function(){
                 let c = new attackMinigames("spell",{},self,target);
             },250)
@@ -309,10 +353,33 @@ export let playerActionDirectory = {
 
             //the timeline system sadly can't really work here and I also need some way for this to get input whilst animate
 
+        },
+        targetType : "enemies",
+        image:"staff",
+        description:"A basic arcane spell to deal small damage to an enemy. Dealing 100% of your attack, works on any range",
+    },
+    fireball : {
+        cost : 30,
+        execute : function(self,target,targetSide){
+            battlefield.take(self,this.cost,"energy");
+            tweenService.create(self.worldData,tweenService.TweenInfo(0.5,"ElasticOut"),{x:self.worldData.x + 100}).play();
+            setTimeout(function(){
+                let c = new attackMinigames("spell",{attackMult:2.5},self,target);
+            },250)
+            //idk rude buster like attack
+
+            //if you ever want to animate this, Illumine's tail should light on fire(the tip erupts into a large flame as she leans forward a bit to avoid getting burned)
+            //She would spin n' jump around in place using her tail to launch a fireball from it, and would stagger at the end of the spin and jump
 
         },
         targetType : "enemies",
+        image:"staff",
+        description:"Cast a powerful Fireball that deals 250% of your attack, also applying BURN to the target",
     },
+
+
+
+    //
     hammer : {
 
     },
@@ -363,10 +430,13 @@ export class attackMinigames {
                     reverse:false,
                 }
                 this.update = function(deltaTime){//do not use update to draw things, it WILL NOT show up!
-
+                    battleUI.battleBoxText = self.name + " is gonna slash "+target.name+"!";
                     if (this.objects.tickX >= (this.objects.boxX + this.objects.boxWidth) - this.objects.tickWidth || this.objects.tickX < this.objects.boxX + this.objects.tickWidth) {
                         this.objects.reverse = !this.objects.reverse;
                     }
+                    // tweenService.create(battleCamera,tweenService.TweenInfo(0.5,"SineOut"),{zoom:1.5}).play();
+                    // battleCamera.x = LERP(battleCamera.x,(self.worldData.x - battleCamera.x) + (self.worldData.width/2),0.1);
+                    // battleCamera.y = LERP(battleCamera.y,(self.worldData.y - battleCamera.y) + (self.worldData.height/2),0.1);
                     //edge case catching
                     if (this.objects.tickX >= (this.objects.boxX + this.objects.boxWidth) - this.objects.tickWidth) {this.objects.tickX = (this.objects.boxX + this.objects.boxWidth) - this.objects.tickWidth;}
                     if (this.objects.tickX <this.objects.boxX + this.objects.tickWidth) {this.objects.tickX = this.objects.boxX + this.objects.tickWidth;}
@@ -375,27 +445,31 @@ export class attackMinigames {
 
                     if (keyReleases[keybinds.Action]) {//this should be when the dmg is calculated, and we give up the turn
                         if (this.objects.tickX >= this.objects.padAreaX && this.objects.tickX <= this.objects.padAreaX + this.objects.padAreaWidth) {
-                            battlefield.damage(target,self.attack.current);
+                            battlefield.damage(target,self.attack.current * (modifiers.attackMult ? modifiers.attackMult : 1));
                         } else {
                             battlefield.damage(target,1);
                             // for (let fun = 0; fun < 75;fun++) {
                             //     setTimeout(() => {battlefield.damage(target,fun);availableAssets.sounds["gp"].play({ playbackRate: 0.1 + Math.random() * 3 });},100*fun);
                             // }
                         }
+                        availableAssets.sounds.air_swing.play({volume:2});
                         tweenService.create(self.worldData,tweenService.TweenInfo(0.5,"SineOut"),{x:allyXBuffer,y:(self.teamIndex * heightAddon) + heightBuffer}).play();
                         this.objects.movingBack = true;
                         self.execute = null;
+                        self.selectedMoveInstance = null;
+                        battleCamera.follow(null);
+                        tweenService.create(battleCamera,tweenService.TweenInfo(0.5,"SineOut"),{x:0,y:0,zoom:1}).play();
                         new shakeEffect(target.worldData,25,0.5);
                         nextTurn();
 
                     }
                 };
                 this.draw = function(){
-                    newRect("outlineBoxBGSword",this.objects.boxX - this.objects.boxOutlineSize, this.objects.boxY - this.objects.boxOutlineSize ,this.objects.boxWidth + (this.objects.boxOutlineSize*2),this.objects.boxHeight + (this.objects.boxOutlineSize*2),"rgb(0,0,0)").draw();
-                    newRect("boxBGSword",this.objects.boxX,this.objects.boxY,this.objects.boxWidth,this.objects.boxHeight,this.objects.boxColor).draw();
-                    newRect("padAreaSword",this.objects.padAreaX,this.objects.padAreaY,this.objects.padAreaWidth,this.objects.padAreaHeight,this.objects.padColor).draw();
-                    newRect("tickSword",this.objects.tickX - this.objects.tickWidth,this.objects.tickY,this.objects.tickWidth,this.objects.tickHeight,this.objects.tickColor).draw();
-                    newText("guidance",(gameWidth/2) - 400,this.objects.boxY - 24,"rgb(255,255,255)","24px Arial","Hold and release your ACTION key when the red tick is in the GREEN area!").draw();
+                    newRect("outlineBoxBGSword",this.objects.boxX - this.objects.boxOutlineSize, this.objects.boxY - this.objects.boxOutlineSize ,this.objects.boxWidth + (this.objects.boxOutlineSize*2),this.objects.boxHeight + (this.objects.boxOutlineSize*2),"rgb(0,0,0)",false,0,true).draw();
+                    newRect("boxBGSword",this.objects.boxX,this.objects.boxY,this.objects.boxWidth,this.objects.boxHeight,this.objects.boxColor,false,0,true).draw();
+                    newRect("padAreaSword",this.objects.padAreaX,this.objects.padAreaY,this.objects.padAreaWidth,this.objects.padAreaHeight,this.objects.padColor,false,0,true).draw();
+                    newRect("tickSword",this.objects.tickX - this.objects.tickWidth,this.objects.tickY,this.objects.tickWidth,this.objects.tickHeight,this.objects.tickColor,false,0,true).draw();
+                    newText("guidance",(gameWidth/2) - 400,this.objects.boxY - 24,"rgb(255,255,255)","24px Arial","Hold and release your ACTION key when the red tick is in the GREEN area!",true).draw();
                 }
                 break;
 
@@ -430,25 +504,51 @@ export class attackMinigames {
                     padAreaY : 800,
                     padColor : "rgb(62,143,57,0.8)",
 
-                    totalDuration:4,
+                    totalDuration:3,
                     fillTime:1,
                     currentFill:0,
+                    currentTime : 0,
+                    started:false,
 
                 }
                 this.update = function(deltaTime){
+                    battleUI.battleBoxText = self.name + " prepares to cast a spell on "+target.name+"...";
                     let object = this.objects;
+
+                    if (object.started) {
+                        object.currentTime += deltaTime;
+
+                        if (object.currentTime >= object.totalDuration) {
+                            battlefield.damage(target,0);
+                            // new shakeEffect(target.worldData,25,0.5);
+                            self.execute = null;
+                            self.selectedMoveInstance = null;
+                            availableAssets.sounds.light_fire.play();
+                            tweenService.create(self.worldData,tweenService.TweenInfo(0.5,"SineOut"),{x:allyXBuffer,y:(self.teamIndex * heightAddon) + heightBuffer}).play();
+                            nextTurn()
+                        }
+                    }
+
+
+
+
                     if (object.tickX >= object.padAreaX && object.tickX <= object.padAreaX + object.padAreaWidth) {
                         object.currentFill+=deltaTime;
                     }
 
                     if (object.currentFill >= object.fillTime) {//grant the highest bonus
-                        battlefield.damage(target,100);
+                        battlefield.damage(target,self.attack.current * (modifiers.attackMult ? modifiers.attackMult : 1));
                         new shakeEffect(target.worldData,25,0.5);
                         self.execute = null;
+                        self.selectedMoveInstance = null;
+                        availableAssets.sounds.light_fire.play();
+                        tweenService.create(self.worldData,tweenService.TweenInfo(0.5,"SineOut"),{x:allyXBuffer,y:(self.teamIndex * heightAddon) + heightBuffer}).play();
                         nextTurn()
                     }
 
                     if (keys[keybinds.Action]) {
+                        if (!object.started) {object.started = true;}
+
                         object.tickX+=object.tickSpeed;
                     } else {
                         object.tickX-= object.tickDecay;
@@ -463,11 +563,19 @@ export class attackMinigames {
 
                 };
                 this.draw = function(){
-                    newRect("boxBGStaff",this.objects.boxX,this.objects.boxY,this.objects.boxWidth,this.objects.boxHeight,this.objects.boxColor).draw();
-                    newRect("padAreaStaff",this.objects.padAreaX,this.objects.padAreaY,this.objects.padAreaWidth,this.objects.padAreaHeight,this.objects.padColor).draw();
-                    newRect("tickStaff",this.objects.tickX - this.objects.tickWidth,this.objects.tickY,this.objects.tickWidth,this.objects.tickHeight,this.objects.tickColor).draw();
-                    newRect("staffCompletion",this.objects.completionX,this.objects.completionY,this.objects.completionWidth * (this.objects.currentFill/this.objects.fillTime),this.objects.completionHeight,this.objects.completionColor).draw();
-                    newText("guidance2",(gameWidth/2) - 650,800 - 24,"rgb(255,255,255)","24px Arial","Hold your ACTION key to move the tick right, try to keep it in the GREEN area! Let go to move it left, don't let it hit the edges").draw();
+                    newRect("boxBGStaff",this.objects.boxX,this.objects.boxY,this.objects.boxWidth,this.objects.boxHeight,this.objects.boxColor,false,0,true).draw();
+                    newRect("padAreaStaff",this.objects.padAreaX,this.objects.padAreaY,this.objects.padAreaWidth,this.objects.padAreaHeight,this.objects.padColor,false,0,true).draw();
+                    newRect("tickStaff",this.objects.tickX - this.objects.tickWidth,this.objects.tickY,this.objects.tickWidth,this.objects.tickHeight,this.objects.tickColor,false,0,true).draw();
+
+
+                    //circular bar for how much time left
+                    newCircleBar("circ", this.objects.boxX - 100,this.objects.boxY+50,50,this.objects.currentTime/this.objects.totalDuration).draw();
+
+                    newRect("staffCompletion",this.objects.completionX,this.objects.completionY,this.objects.completionWidth * (this.objects.currentFill/this.objects.fillTime),this.objects.completionHeight,this.objects.completionColor,false,0,true).draw();
+
+
+
+                    newText("guidance2",(gameWidth/2) - 650,800 - 24,"rgb(255,255,255)","24px Arial","Hold your ACTION key to move the tick right, try to keep it in the GREEN area! Let go to move it left, don't let it hit the edges",true).draw();
                 };
                 break;
             case "pirate":
@@ -483,6 +591,124 @@ export class attackMinigames {
         attackMinigames.existingMinigames.push(this);
     }
 
+}
+
+
+export class itemHandlerBattle {
+    static currentItems = [];
+    static globalConfigurations= {
+        animationTime:2,
+        xOffset:20,
+        yOffset:-20,
+        maxYOffset:-100,
+        maxParticleDistance:120,
+        particleColor:"rgb(116,227,122)",
+        particleRotation:45,//degrees
+    }
+    static spawnNewParticle(originX,originY,size) {
+        return {oX:originX,oY:originY,x:originX,y:originY,size:size,
+            directionX:randInt(-this.globalConfigurations.maxParticleDistance,this.globalConfigurations.maxParticleDistance),
+            directionY:randInt(-this.globalConfigurations.maxParticleDistance,this.globalConfigurations.maxParticleDistance)};
+    }
+
+
+
+    //for future me; this should have an item tween up from the player's position, kind of like how Block Tales shows the player using an item
+    //but make it come out of their body and add some particle effects (use the object portion to create a persistent randomized particle system, like a shower of diamonds firework exploding from the player's body to show a heal)
+    constructor(name, targetType, itemIndex,self,target) {
+        this.currentTime=0;
+
+        this.particles = [];
+        this.tweenedParticles=false;
+
+        this.objectSize = 100;
+        this.objX = target.worldData.x + itemHandlerBattle.globalConfigurations.xOffset;
+        this.objY= target.worldData.y + itemHandlerBattle.globalConfigurations.yOffset;
+
+        this.image = itemDirectory[playerInventory[itemIndex]]?.image
+
+        this.itemIndex = itemIndex;
+
+        this.halfway = false;
+        for (let instIndex=0;instIndex<randInt(35,50);instIndex++){
+            this.particles.push(itemHandlerBattle.spawnNewParticle(
+                target.worldData.x+ (target.worldData.width/2),
+                target.worldData.y+ (target.worldData.height/2),
+                randInt(10,20)));//size
+        }
+
+
+        this.update = function(deltaTime){
+            this.currentTime+=deltaTime;
+
+            if (!this.tweenedParticles) {
+                console.log("Item index received: "+itemIndex);
+
+                tweenService.create(this,tweenService.TweenInfo(1,"ElasticOut"),{
+                    objY: target.worldData.y + itemHandlerBattle.globalConfigurations.maxYOffset
+                }).play();
+
+                availableAssets.sounds[itemDirectory[playerInventory[itemIndex]]?.sound ?? "nutella"].play();
+
+                this.tweenedParticles = true;
+            }
+
+
+            if (this.currentTime >= itemHandlerBattle.globalConfigurations.animationTime/2 && !this.halfway) {
+                //start all anims
+                let selectedItem = itemDirectory[playerInventory[itemIndex]];
+                for (let inst of this.particles) {
+                    tweenService.create(inst,tweenService.TweenInfo(1.25,"SineOut"),{x:inst.oX + inst.directionX,y:inst.oY  + inst.directionY}).play();
+                    setTimeout(()=>{
+                        tweenService.create(inst,tweenService.TweenInfo(1,"SineOut"),{
+                            // x:inst.oX + inst.directionX-inst.size,y:inst.oY  + inst.directionY-inst.size,
+                            size:0}).play();
+                    },500)
+                }
+
+                tweenService.create(this,tweenService.TweenInfo(0.5,"SineOut"),{
+                    objX:target.worldData.x+ (target.worldData.width/2),
+                    objY: target.worldData.y +(target.worldData.height/2),
+                    objectSize:0
+                }).play();
+                battlefield.grant(target,
+                    selectedItem.type === "heal"? selectedItem.heal : selectedItem.type === "damage"? selectedItem.damage : null,
+                    "health"
+                );
+                new damageCounter(selectedItem?.heal || selectedItem?.damage,target.worldData.x + (target.worldData.width/2),target.worldData.y + (target.worldData.height/2),"rgb(114,208,126,");
+                battleUI.battleBoxText = self.name + " used " + playerInventory[itemIndex] + " on "+ target.name;
+                battlefield.itemIndexBuffer.push(itemIndex);
+                setTimeout(()=>{
+                    battlefield.turn++;
+                    setState(battleStates.TURN_START);
+                    itemHandlerBattle.currentItems.shift();
+                },2000);
+
+
+                this.halfway = true;
+
+            }
+
+
+        };
+
+        this.draw = function() {
+            // if (this.currentTime <= itemHandlerBattle.globalConfigurations.animationTime/2) {
+            //     newImage("item",this.objX,this.objY,this.objectSize,this.objectSize,availableAssets.images[itemDirectory[playerInventory[itemIndex]].image]).draw();
+            // }
+            newImage("item",this.objX,this.objY,this.objectSize,this.objectSize,availableAssets.images[this.image]).draw();
+
+            if ((this.currentTime >= itemHandlerBattle.globalConfigurations.animationTime/2)) {
+                for (let inst of this.particles) {
+
+                    newRotatedRect("particle",inst.x,inst.y,inst.size,inst.size,itemHandlerBattle.globalConfigurations.particleColor,itemHandlerBattle.globalConfigurations.particleRotation).draw();
+                }
+            }
+
+
+        }
+        itemHandlerBattle.currentItems.push(this);
+    }
 }
 
 /*
