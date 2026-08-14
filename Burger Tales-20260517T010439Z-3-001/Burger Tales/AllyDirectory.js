@@ -18,14 +18,14 @@ export let allyDirectory = {
     * */
 
     Cobalt : {
-        image: "cobalt", //path to an image using availableAssets
+        image: "cornball", //path to an image using availableAssets
         name : "Cobalt",
         health: 60,
-        defense : 40,
+        defense : 2,
         attack : 6,
         energy: 25, //some actions use energy because they are stronger / enhanced
-        speed : 94,//TEMPORARY 99, HIS REGULAR SPEED IS 14
-        actions : ["slash","shatter","rectal exam 9000"], //ONLY damage or debuffing moves
+        speed : 14,//TEMPORARY 99, HIS REGULAR SPEED IS 14
+        actions : ["slash","powerSlash"], //ONLY damage or debuffing moves
     },
 
     /*
@@ -41,14 +41,14 @@ export let allyDirectory = {
     * */
 
     Illumine : {//MAIN DAMAGE DEALER
-        image:"illumine",
+        image:"tungsten_cube",
         name : "Illumine",
         health : 35,
         defense : 0,
         attack :7,
         energy : 35,
         speed : 18,
-        actions : ["wack","fireball","bigfart2"],
+        actions : ["blip","fireball"],
     },
 
 
