@@ -27,9 +27,9 @@ export let keybinds = {
     MenuNavigationLeft : "KeyA",
     MenuNavigationRight : "KeyD",
     //Misc.
-    QuickSave : "KeyG",
-    QuickLoad : "KeyL",
-    QuickMenu : "KeyV",
+    // QuickSave : "KeyG",
+    // QuickLoad : "KeyL",
+    QuickMenu : "KeyG",
 }
 
 for (let bind in keybinds) {keys[keybinds[bind]] = false} //we are setting up keybinds so we get no null values at runtime
