@@ -50,6 +50,14 @@ function draw(dt) {
         dialogue.update(dt);
     } else if (gameState === "Battle") {
         battle.draw();
+    } else if (gameState === "Death") {
+        //render death ui
+    } else if (gameState === "Shop") {
+        //render shop ui
+    } else if (gameState === "menu") {
+        //render the subMenu in the world
+    } else if (gameState === "Start") {
+        //menu where the player loads save files
     }
     // for (let img in availableAssets.images) {
     //     if (availableAssets.images[img]) {
@@ -64,7 +72,7 @@ function draw(dt) {
     // } else {
     //     // console.log("idk where your image went")
     // }
-    let fps = newText("fps_counter",0,0,"rgb(255,255,255)","60px Monospace","FPS: "+ Math.ceil(1/dt) );
+    let fps = newText("fps_counter",0,60,"rgb(255,255,255)","60px Monospace","FPS: "+ Math.ceil(1/dt) );
     fps.draw()
 }
 
@@ -101,8 +109,13 @@ function loop() {//MAIN GAME HAPPENS HERE
         //this is for examining your inventory, maps, characters, and saving
     } else if (gameState === "World") {
         world.update(deltaTime);
+
     } else if (gameState === "Battle") {
         battle.update(deltaTime);
+    } else if (gameState === "Shop") {
+
+    } else if (gameState === "Death") {
+
     }
     draw(deltaTime);
 
