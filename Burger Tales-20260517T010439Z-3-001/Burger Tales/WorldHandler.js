@@ -68,8 +68,6 @@ function autoTiler(tilemap, parentName) {
         }
         world.precomputedTileset.push(row);
     }
-    console.log(world.precomputedTileset[0].length);
-    console.log(world.precomputedTileset.length);
     return world.precomputedTileset;
 }
 
@@ -88,7 +86,7 @@ export let world = {
 
     locations : {
         "Woodrock_Southern_Entrance" : {
-            Tilemap: [//TILE MAPS MUST BE SQUARE!!!!
+            Tilemap: [
                 [0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
                 [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
                 [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -106,15 +104,15 @@ export let world = {
                 [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
                 [0,0,0,1,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,2], //20 x 16
             ],
-            LightLevel: 0.4,
+            LightLevel: 2,
             Music: "dark_sanct",
-            battleMusic : "black_knife",
+            battleMusic : "SPAWN",
             Areas: [//DRAWN FROM Y-PRIORITY, DO NOT CARE FOR HOW YOU ORDER THEM
-                {id : "guy", image: "man", imageData : {x:600, y:500,width:150, height:150},collisionData: {x:0,y:0,width:150,height:150}, interaction: {dialogue : "guy"}},
-                {id : "guy", image: "man", imageData : {x:500, y:500,width:150, height:150},collisionData: {x:0,y:0,width:150,height:150}, interaction: {dialogue : "dog"}},
+                {id : "guy", image: "man", imageData : {x:600, y:500,width:150, height:150},collisionData: {x:0,y:0,width:150,height:150}, interaction: {dialogue : "stealer"}},
+                {id : "guy", image: "angry_man", imageData : {x:500, y:500,width:150, height:150},collisionData: {x:0,y:0,width:150,height:150}, interaction: {dialogue : "Angry_man"}},
                 {id : "guy", image: "man", imageData : {x:400, y:500,width:150, height:150},collisionData: {x:0,y:0,width:150,height:150}, interaction: {dialogue : "dog"}},
-                {id : "guy", image: "man", imageData : {x:300, y:500,width:150, height:150},collisionData: {x:0,y:0,width:150,height:150}, interaction: {dialogue : "dog"}},
-                {id : "guy", image: "man", imageData : {x:100, y:500,width:150, height:150},collisionData: {x:0,y:0,width:150,height:150}, interaction: {battle : {enemies : ["grass_dweller","grass_dweller"], backgroundData: [{name:"sky",x:0,y:0,width:1920,height:1080,image:"sky"},{name:"grass",rectangle:true,x:0,y:300,width:1920,height:1080,color:"rgb(39,129,95)"}] }}},
+                {id : "guy", image: "man", imageData : {x:300, y:500,width:150, height:150},collisionData: {x:0,y:0,width:150,height:150}, interaction: {dialogue : "Iris_1"}},
+                {id : "guy", image: "man", imageData : {x:100, y:500,width:150, height:150},collisionData: {x:0,y:0,width:150,height:150}, interaction: {battle : {enemies : ["grass_dweller","grass_dweller","grass_dweller"], backgroundData: [{name:"sky",x:-100,y:-100,width:1920*1.5,height:1080*1.5,image:"sky"},{name:"grass",rectangle:true,x:-500,y:300,width:2920,height:2080,color:"rgb(39,129,95)"}] }}},
                 {id: "tree1", image: "tree2", imageData : {x:200,y:200,width:300,height:300}, collisionData: {x:150,y:0,width:100,height:100}},
             ],
             Foliage : [//high level foliage
@@ -148,10 +146,10 @@ export let world = {
             LightLevel:0.1,
             Tint: {color:"rgb(31,89,234)",opacity:0.8},
             Areas: [
-                {id : "guy", image: "man", imageData : {x:600, y:500,width:150, height:150},collisionData: {x:0,y:0,width:150,height:150}, interaction: {dialogue : "guy"}},
+                {id : "guy", image: "man", imageData : {x:600, y:500,width:150, height:150},collisionData: {x:0,y:0,width:150,height:150}, interaction: {dialogue : "aiden"}},
                 {id : "wom", image: "woman", imageData : {x:800, y:500,width:150, height:150},collisionData: {x:0,y:0,width:130,height:150}, interaction: {dialogue : "textTester"}},
                 {id : "lamp", image:"cornball",imageData: {x:400,y:800,width: 100,height:150},collisionData: {x:0,y:0,width:100,height:150},brightness:0.4,lightColor:"rgb(234,48,31)",lightRadius:200},
-                {id : "lamp", image:"cornball",imageData: {x:900,y:800,width: 100,height:150},collisionData: {x:0,y:0,width:100,height:150},brightness:0.3,lightColor:"rgb(255,255,255)",lightRadius:200,lightFlicker:true},
+                {id : "lamp", image:"lampPost",imageData: {x:900,y:800,width: 100,height:150},collisionData: {x:0,y:0,width:100,height:150},brightness:0.3,lightColor:"rgb(255,255,255)",lightRadius:200,lightFlicker:true},
             ],
             Next: {
                 Right : "Woodrock_Southern_Entrance",
@@ -164,10 +162,20 @@ export let world = {
                 [2,2,2,0,1],
             ],
             Music : "second_sanct",
+            Tint:{color:"rgb(59,34,124)",opacity:0.7},
             LightLevel:0.5,
             Areas: [
-                {id : "guy", image: "man", imageData : {x:600, y:500,width:150, height:150},collisionData: {x:0,y:0,width:150,height:150}, interaction: {dialogue : "guy"}},
-                {id : "wom", image: "woman", imageData : {x:800, y:500,width:150, height:150},collisionData: {x:0,y:0,width:130,height:150}, interaction: {dialogue : "textTester"}},
+                {id : "window_1",image:"window",imageData:{x:200,y:-350,width:150,height:250}},
+                {id : "window_2",image:"window",imageData:{x:500,y:-350,width:150,height:250}},
+                {id : "window_3",image:"window",imageData:{x:800,y:-350,width:150,height:250}},
+                {id : "window_4",image:"window",imageData:{x:1100,y:-350,width:150,height:250}},
+                {id : "window_5",image:"window",imageData:{x:1400,y:-350,width:150,height:250}},
+                {id : "window_6",image:"window",imageData:{x:1700,y:-350,width:150,height:250}},
+                {id : "window_7",image:"window",imageData:{x:2000,y:-350,width:150,height:250}},
+                {id : "window_8",image:"window",imageData:{x:2300,y:-350,width:150,height:250}},
+                {id : "window_9",image:"window",imageData:{x:2600,y:-350,width:150,height:250}},
+                {id : "guy", image: "man", imageData : {x:600, y:400,width:150, height:150},collisionData: {x:0,y:0,width:150,height:150}, interaction: {dialogue : "guy"}},
+                {id : "wom", image: "woman", imageData : {x:800, y:350,width:150, height:150},collisionData: {x:0,y:0,width:130,height:150}, interaction: {dialogue : "textTester"}},
             ],
             Next: {
                 Left:"Woodrock_Southern_Entrance",
@@ -181,26 +189,26 @@ export let world = {
 
 
 
-        const mapWidth = (world.locations[location].Tilemap[0].length) * TILE_SIZE;  // columns
-        const mapHeight = (world.locations[location].Tilemap.length) * TILE_SIZE;    // rows
+        let mapWidth = (world.locations[location].Tilemap[0].length) * TILE_SIZE;  // columns
+        let mapHeight = (world.locations[location].Tilemap.length) * TILE_SIZE;    // rows
         let locationExited = "null";
         if (playerController.centerX > mapWidth) {
             locationExited = "Right";
         } else if (playerController.centerX < 0) {
             locationExited = "Left";
-            console.log("left")
         } else if (playerController.centerY < 0) {
             locationExited = "Up";
         } else if (playerController.centerY > mapHeight) {
             locationExited = "Down";
-            console.log("down")
         }
 
         if (locationExited !== "null" && world.locations?.[world.locations[location].Next[locationExited]]) {
             location = world.locations[location].Next[locationExited];
-            playerController.x = locationExited === "Left" ? (world.locations[location].Tilemap.length) * TILE_SIZE - playerController.width :
+            let mapWidth = (world.locations[location].Tilemap[0].length) * TILE_SIZE;  // columns
+            let mapHeight = (world.locations[location].Tilemap.length) * TILE_SIZE;    // rows
+            playerController.x = locationExited === "Left" ? (mapWidth) - (playerController.width) :
                 locationExited === "Right" ? 0 : playerController.x;
-            playerController.y = locationExited === "Down" ? 0 : locationExited === "Up" ? (world.locations[location].Tilemap.length) * TILE_SIZE - playerController.height : playerController.y;
+            playerController.y = locationExited === "Down" ? 0 : locationExited === "Up" ? mapHeight + playerController.height : playerController.y;
         }
 
         playerController.update(deltaTime);
@@ -421,6 +429,6 @@ export let world = {
 }
 
 let size =100;
-for (let i = 0; i<500; i++){
+for (let i = 0; i<50; i++){
     world.locations[location].Areas.push({id : "tree"+i, image:"tree2",imageData : {x:(Math.random()*1600) - (size/2),y:(Math.random()*1600) - (size/2),width:size,height:size},color:[1,2,3]});
 }
