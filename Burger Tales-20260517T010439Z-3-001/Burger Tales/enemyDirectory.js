@@ -1,20 +1,38 @@
 import {battle, battlefield} from "./BattleHandler.js";
+import {actionDirectory} from "./actionDirectory.js";
+import {randInt} from "./Utility.js";
 
 export let enemyDirectory = {
 
     grass_dweller : {
         name : "grass dweller",
         image : "dirt",
-        health: 15,
-        defense: 1,
-        attack: 9,
+        health: 20,
+        defense: 2,
+        attack: 5,
         energy : 20,
         speed: 4,
-        offensive : ["fight"],
+        actions : ["fight"],
+        other:[],
+        logic : function(){
+            let randomAlly = randInt(0,battlefield.allies.length-1);
+            actionDirectory["fight"].execute(this,battlefield.allies[randomAlly], "allies");
+        }
+    },
+
+    "angry" : {
+        name : "grass dweller",
+        image : "angry_man",
+        health: 25,
+        defense: 1,
+        attack: 5,
+        energy : 50,
+        speed: 3,
+        actions : ["fight"],
         other:[],
         logic : function(){
             let randomAlly = Math.floor(Math.random()*battlefield.allies.length);
-            this.actions["fight"].execute(battlefield.allies[randomAlly], "allies");
+            actionDirectory["fight"].execute(this,battlefield.allies[randomAlly], "allies");
         }
     },
 
@@ -34,7 +52,9 @@ export let enemyDirectory = {
         attack: 93,
         energy : 400, //has little downtime between attacks
         speed: 7,
-        actions : ["fight"],
+        offensive : ["tungsten_rush","tungsten_leap"],
+        other:["harden"],
+        pattern:["tungsten_rush","tungsten_leap","tungsten_rush","harden"],
         logic : function(){
             let randomAlly = Math.floor(Math.random()*battlefield.allies.length);
             this.actions["fight"].execute(battlefield.allies[randomAlly], "allies");
