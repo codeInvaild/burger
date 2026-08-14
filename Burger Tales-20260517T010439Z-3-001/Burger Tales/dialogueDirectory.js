@@ -16,21 +16,110 @@ export const dialogueDirectory = {
     dog : {
         normal : [
             {
-                speaker: "Dog",
                 text : "placeholder text 1",
             },
             {
-                speaker: "Dog",
-                text : "placeholder.. text.. 2..",
+                text : "@wavy(15,6)/Super Wavy text! @end wow!",
             },
             {
-                speaker: "???",
-                text : "testing @rgb(2,2,2)/shake(1,1,1)/custom font! @end now!",
+                text : "testing @rgb(255,2,2)/shake(1,1,1)/speedMs(100)/custom font! @end now! And never ever try this again I really hope @rgb(0,255,0)/text @end isn't just 1 big text box",
             },
             {
-                speaker: "???",
-                text : "Here is some super long string of text that we need to test and see if the skipping feature works",
+                text : "Here is some super long string of text that we need to test and see if the skipping feature works aaaand I @wavy(5,12)/also @end need to know if you robbed the @wavy(5,10)/pneumaunrosrotoiscoliscois @end store ok yes? sure why not man",
             },
+        ]
+    },
+    textTester : {
+        normal : [
+            {
+                text : "Hiiiiii~",
+                voice:"Female_1",
+            },
+            {
+                text : "Mind if I test some text with you?~",
+                voice:"Female_1",
+            },
+            {
+                text : "I @rgb(255,0,255)/ love @end testing text",
+                voice:"Female_1",
+            }
+        ],
+    },
+
+    Iris_1: {
+        normal : [
+            {
+                text:"...",
+                voice:"Female_2",
+            },
+            {
+                text:"guess you're the one I must partner with",
+                voice:"Female_2",
+            },
+            {
+                text:"Just don't slow me down.",
+                voice:"Female_2",
+            },
+        ]
+    },
+
+    Angry_man: {
+        normal : [
+            {
+                text:"HEY YOU!",
+                voice:"Male_1",
+            },
+            {
+                text:"You @size(50)/rgb(250,120,83)/BRAT! @end , I hate the way you're eyeing me!",
+                voice:"Male_1",
+            },
+            {
+                battle: {
+                    enemies : ["grass_dweller","grass_dweller","grass_dweller"],
+                    backgroundData: [
+                        {name:"sky",x:-100,y:-100,width:1920 * 1.5,height:1080 * 1.5,image:"sky"},
+                        {name:"grass", rectangle:true, x:-500, y:300, width:2920, height:2080, color:"rgb(39,129,95)"}
+                    ]
+                },
+            }
+        ],
+    },
+
+    stealer: {
+        normal : [
+            {
+                text:"Hey @shake(2)/Kid! @end",
+            },
+            {
+                text:"Mind telling me the @rgb(100,100,5)/3 @end numbers on the back of your @rgb(87,9,172)/credit card? @end and the number on the back of it too?"
+            },
+            {
+                text:"@wavy(15,6)/shake(2)/You can't find me bruh @end"
+            },
+            {
+                text:"just @speedMs(1000)/... @end @size(50)/rgb(255,0,0)/wavy(40,7)/GIVE IT TO ME! @end"
+            }
+        ]
+    },
+
+    aiden: {
+        normal : [
+            {
+                text:"have you heard of the wonderful consumable item @rgb(255,0,0)/wavy(5,3)/soup? @end i love soup its yummy in my tummy. here take some of my @wavy(5,2)/ finest @end soup."
+            },
+
+
+        ]
+    },
+
+    thinker:{
+        normal : [
+            {
+                text:"If thinking is my power, then what am I without it?",
+            },
+            {
+
+            }
         ]
     }
 
