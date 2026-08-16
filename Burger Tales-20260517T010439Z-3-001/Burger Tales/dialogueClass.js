@@ -1,11 +1,12 @@
 import { dialogueDirectory } from "./dialogueDirectory.js"
-import {newRect, newText, randInt} from "./Utility.js"
+import {newRect, newText, randInt, newFilledText} from "./Utility.js"
 import { mouse } from "./MouseInputHandler.js"
-import {playerController} from "./PlayerController.js";
-import {keybinds} from "./KeyboardInputHandler.js";
+import {playerController, playerData} from "./PlayerController.js";
+import {keybinds, keyPresses} from "./KeyboardInputHandler.js";
 import {availableAssets} from "./AssetLoader.js";
 import {battle} from "./BattleHandler.js";
 import {world} from "./WorldHandler.js";
+import {gameWidth} from "./main.js";
 
 //what does this do?
 /*
@@ -15,9 +16,97 @@ import {world} from "./WorldHandler.js";
 * the dialogue class below makes it easy to set up and draw from the same instance
 */
 
-let textEffects = {
-    shake(){}
-}
+// class rawData {
+//     constructor(a,b,c) {;
+//
+//     }
+// }
+//
+// class dataObject extends rawData {
+//     constructor(a,b,c,d) {
+//         super(a,b,c);
+//     }
+// }
+//
+// class dataInteger extends rawData {
+//
+// }
+
+
+
+// class choice{
+//     constructor(choice,dataToWrite=null){
+//         this.choice = choice;
+//         this.dataToWrite = dataToWrite;
+//     }
+// }
+
+export let questionHandler = {
+    boxWidth:300,
+    boxBaseHeight:100,
+    boxStartingY: 400,
+    boxYSpacing:150,
+    boxX:(1920/2) + (300/2),
+
+    textSize:25,
+
+    baseColor : "rgb(176,89,165)",
+    selectColor : "rgb(88,37,105)",
+
+    selectionIndex:0,
+    choices:[],
+
+    satisfied:true,
+    poll:false,
+
+    update(dt){
+        if (keyPresses[keybinds.Interact] && !this.poll) {
+            this.poll = true;
+        } else if (keyPresses[keybinds.Interact] && this.poll) {
+            availableAssets.sounds.OO_Click.play();
+            let selection = this.choices[this.selectionIndex];
+            if (selection?.writeTo) {
+                playerData.internalData[selection?.writeTo[0]] = selection?.writeTo[1];
+                console.log(playerData.internalData);
+            }
+            this.satisfied=true;
+            this.poll = false;
+        } else if (keyPresses[keybinds.Left]) {
+            availableAssets.sounds.navigation.play();
+            if (this.selectionIndex - 1 >-1) {this.selectionIndex--;}
+        } else if (keyPresses[keybinds.Right]) {
+            availableAssets.sounds.navigation.play();
+            if (this.selectionIndex + 1 <this.choices.length) {this.selectionIndex++;}
+        }
+    },
+
+    draw(){
+        for (let choiceIndex=0; choiceIndex<this.choices.length;choiceIndex++) {
+            //precompute box height based on the word wrapping
+
+            newRect("bg",this.boxX,this.boxStartingY + (choiceIndex*this.boxYSpacing),this.boxWidth,this.boxBaseHeight,this.selectionIndex === choiceIndex ? this.selectColor : this.baseColor).draw();
+            newFilledText("textForAnswers",this.boxX,this.boxStartingY + (choiceIndex*this.boxYSpacing),"rgb(255,255,255)",this.textSize+"px JetBrains Mono ExtraBold",this.choices[choiceIndex].text).draw();
+        }
+    },
+
+    append(answerList){
+        for (let choiceI of answerList) {
+            let canQuestion = true;
+            if (choiceI?.readFrom) {
+                if (playerData.internalData[choiceI?.readFrom[0]] !== choiceI?.readFrom[1]){canQuestion=false;}
+            }
+            if (canQuestion) {
+                this.choices.push({
+                    text:choiceI.text,
+                    readFrom: choiceI?.readFrom,
+                    writeTo: choiceI?.writeTo,
+                });
+            }
+        }
+        this.satisfied=false;
+    },
+};
+
 
 export let dialogue = {
 
@@ -35,6 +124,8 @@ export let dialogue = {
     characterWidth : 25, //pixel width
     characterHeight : 25,
     startingYBuffer :20,
+
+    backgroundBox:true,
 
     continueBoxSize : 80,
 
@@ -98,7 +189,7 @@ export let dialogue = {
         let currentY = 0;
 
         for (let word of final) {
-            let letterWidth = this.characterWidth;
+            let letterWidth = this.characterWidth + 3;
             let letterHeight = this.characterHeight;
             let SPACING = 3/4 * letterWidth;
 
@@ -135,7 +226,7 @@ export let dialogue = {
             console.log("INPUT A");
             this.characterIndex = this.precomputedText.length-1;
             this.textFinished = true;
-        } else if (this.textFinished) {
+        } else if (this.textFinished && questionHandler.satisfied) {
             console.log("INPUT B");
             dialogue.textFinished = false;
             this.dialogueIndex++;
@@ -166,8 +257,13 @@ export let dialogue = {
             return;
         }
         if (dialogue.dialogueIndex < 0 || dialogue.resolving) {return}
-        let rect = newRect("dialogueBoxBG",dialogue.x - this.characterSize, dialogue.y - this.characterSize,dialogue.width + this.characterSize,dialogue.height + this.characterSize,"rgb(218,203,166)");
+        let rect = newRect("dialogueBoxBG",dialogue.x - this.characterSize, dialogue.y - this.characterSize,dialogue.width + this.characterSize,dialogue.height + this.characterSize,"rgb(80,80,80)");
         rect.draw();
+
+        if (!questionHandler.satisfied && this.textFinished) {
+            questionHandler.update(delta);
+            questionHandler.draw();
+        }
 
         this.localElapsedTime += delta * 1000;
 
@@ -187,12 +283,12 @@ export let dialogue = {
             }
         } else {
             newRect("dialogueBoxContinueBox",dialogue.x + dialogue.width -(this.continueBoxSize/2),this.y - (this.continueBoxSize/2),this.continueBoxSize,this.continueBoxSize,"rgb(0,0,0)").draw();
-            newText("dialogueBoxContinueBoxText",dialogue.x + dialogue.width -(this.continueBoxSize/2),this.y,"rgb(255,255,255)",(this.continueBoxSize/2)+"px Courier New",keybinds.Interact).draw();
+            newText("dialogueBoxContinueBoxText",dialogue.x + dialogue.width -(this.continueBoxSize/2),this.y,"rgb(199,185,160)",(this.continueBoxSize/3)+"px JetBrains Mono ExtraBold",keybinds.Interact).draw();
         }
 
         for (let [index,character] of this.precomputedText.entries()) {
             if (index <= this.characterIndex) {
-                let color = "rgb(0,0,0)";
+                let color = "rgb(255,255,255)";
                 let size = dialogue.characterWidth;
                 let textX = character.x + this.x;
                 let textY = character.y + this.y;
@@ -220,7 +316,7 @@ export let dialogue = {
                         }
 
                         wavy = styleI.value.split(",");
-                        let percentage = (index/24) * (Math.PI*2)
+                        let percentage = (index/25) * (Math.PI*2)
                         textX = textX + -(Math.cos(performance.now() / 1000 * wavy[1] + percentage) * wavy[0]);
                         textY = textY + (Math.sin(performance.now() / 1000 * wavy[1] + percentage) * wavy[0]);
                     }
@@ -230,24 +326,25 @@ export let dialogue = {
                     }
                 }
 
-                if (wavy) {
 
-                    // textX = textX + -(Math.cos(performance.now() / 1000 * wavy[1] - index) * wavy[0]);
-                    // textY = textY + (Math.sin(performance.now() / 1000 * wavy[1] + index) * wavy[0]);
-                }
-
-
-                newText("character_"+character.letter+"_"+index,
+                newFilledText("character_"+character.letter+"_"+index,
                     textX,
                     textY,
                     color,
-                    size+"px Courier New",
+                    size+"px JetBrains Mono ExtraBold",
                     character.letter
                 ).draw();
             }
         }
 
+
+
         if (this.precomputedText.length-1 === this.characterIndex) {this.textFinished = true;}
+    },
+    
+
+    setupPosition(x,y,w,h){
+
     },
 
     //you should run this, not the update function. This lets us know which dialogue to use
@@ -255,6 +352,7 @@ export let dialogue = {
         dialogue.resolving = true;
         if (dialogue.dialoguePresent) {return}
         dialogue.dialoguePresent = true;
+        questionHandler.choices = [];
 
         if (!dialogueDirectory[dialogueName]) {Error("dialogue directory not found.");} else if (dialogueDirectory[dialogueName]?.normal === null) {Error("You did not supply a normal (default) for this dialogue: "+dialogueName)}
         dialogue.name = dialogueName;
@@ -268,20 +366,63 @@ export let dialogue = {
            } else if (identifier.split("-")[0] === "normal") {
                dialogue.dialogueIndex= startingIndex ? 0 : dialogue.dialogueIndex;
                let dialogueInst = dialogueDirectory[dialogueName][identifier][dialogue.dialogueIndex];
-               if (dialogueInst?.battle) {
-                   //trigger battle mechanics by loading it into the player controller
-                   this.dialoguePresent=false;
-                   dialogue.name = "";
-                   playerController.state = "battle";
-                   //battle start needs correct parameters
-                   console.log(dialogueInst.battle)
-                   battle.start(dialogueInst.battle.enemies,world.currentLocation, dialogueInst.battle.backgroundData);
-               } else if (dialogueInst?.text) {
+               let canDo = true;
+               if (dialogueInst?.condition) {
+                   if (playerData.internalData[dialogueInst?.condition.check[0]] === dialogueInst?.condition.check[1]) {
+                       canDo = false;
+                       console.log("resolving condition because TRUE")
+                       dialogue.resolving = false
+                       dialogue.dialoguePresent = false;
+                       dialogue.resolve(dialogueInst?.condition.ifTrue,true);
+                       return;
+                   } else {
+                       if (Object.keys(dialogueInst).length <2) {
+                           dialogue.dialogueIndex = -1;
+                           dialogue.textFinished = false;
+                           this.playerInteract = false;
+                           dialogue.dialoguePresent = false;
+                           dialogue.selectedData = {who:"nobody",textIdentifier:"none"};
+                           playerController.state = "active";
+                           dialogue.localElapsedTime = 0;
+                           dialogue.characterIndex = 0;
+                           dialogue.precomputedText = [];
+                       }
+                   }
+               }
 
-                   this.precomputeWordWrapping(dialogueInst?.text)
-                   dialogue.selectedData = {who:dialogueName, textIdentifier:identifier,
-                       voice:dialogueDirectory[dialogueName][identifier][dialogue.dialogueIndex]?.voice ? dialogueDirectory[dialogueName][identifier][dialogue.dialogueIndex]?.voice : "OO_Talk"
-                   };
+               if (canDo) {
+                   if (dialogueInst?.choices) {
+                       questionHandler.satisfied = false;
+                       questionHandler.append(dialogueInst.choices);
+                   }
+
+                   if (dialogueInst?.writeTo) {
+                       playerData.internalData[dialogueInst?.writeTo[0]] = dialogueInst?.writeTo[1];
+                       if (Object.keys(dialogueInst).length < 2) {
+                           dialogue.textFinished = false;
+                           this.dialogueIndex++;
+                           dialogue.dialoguePresent = false;
+                           dialogue.localElapsedTime = 0;
+                           dialogue.precomputedText = [];
+                           dialogue.characterIndex = 0;
+                           dialogue.resolve(dialogue.name);
+                       }
+                   }
+
+                   if (dialogueInst?.battle) {
+                       //trigger battle mechanics by loading it into the player controller
+                       this.dialoguePresent=false;
+                       dialogue.name = "";
+                       playerController.state = "battle";
+                       //battle start needs correct parameters
+                       console.log(dialogueInst.battle)
+                       battle.start(dialogueInst.battle.enemies,world.currentLocation, dialogueInst.battle.backgroundData);
+                   } else if (dialogueInst?.text) {
+                       this.precomputeWordWrapping(dialogueInst?.text)
+                       dialogue.selectedData = {who:dialogueName, textIdentifier:identifier,
+                           voice:dialogueDirectory[dialogueName][identifier][dialogue.dialogueIndex]?.voice ? dialogueDirectory[dialogueName][identifier][dialogue.dialogueIndex]?.voice : "OO_Talk"
+                       };
+                   }
                }
 
                break;
